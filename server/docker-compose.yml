@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finance_ia_app
+    ports:
+      - '8080:8080'
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://financeuser:financepass@postgres:5432/financeapp?sslmode=disable
+      JWT_SECRET: your-super-secret-jwt-key
+    volumes:
+      - ./config:/app/config
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: financeapp
+      POSTGRES_USER: financeuser
+      POSTGRES_PASSWORD: financepass
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    driver: local
