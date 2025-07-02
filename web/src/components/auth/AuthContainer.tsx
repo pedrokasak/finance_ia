@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { LoginPage } from './LoginPage';
 import { SignupPage } from './SignupPage';
 import { ForgotPasswordPage } from './ForgotPasswordPage';
@@ -8,9 +8,13 @@ interface AuthContainerProps {
 }
 
 export function AuthContainer({ onLogin }: AuthContainerProps) {
-  const [currentPage, setCurrentPage] = useState<'login' | 'signup' | 'forgot-password'>('login');
+  const [currentPage, setCurrentPage] = useState<
+    'login' | 'signup' | 'forgot-password'
+  >('login');
 
-  const handleNavigate = (page: 'login' | 'signup' | 'forgot-password' | 'app') => {
+  const handleNavigate = (
+    page: 'login' | 'signup' | 'forgot-password' | 'app',
+  ) => {
     if (page === 'app') {
       onLogin();
     } else {

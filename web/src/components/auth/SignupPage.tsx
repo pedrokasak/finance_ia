@@ -5,21 +5,27 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { AuthLayout } from './AuthLayout';
-import { Eye, EyeOff, Mail, Lock, User, Chrome, Github, Check } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  Chrome,
+  Github,
+  Check,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { AuthProps } from './types';
 
-interface SignupPageProps {
-  onNavigate: (page: 'login' | 'signup' | 'forgot-password' | 'app') => void;
-}
-
-export function SignupPage({ onNavigate }: SignupPageProps) {
+export function SignupPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -35,9 +41,9 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) return;
     if (!acceptTerms) return;
-    
+
     setIsLoading(true);
-    
+
     // Simular cadastro
     setTimeout(() => {
       setIsLoading(false);
@@ -46,14 +52,13 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   return (
     <AuthLayout
       title="Crie sua conta"
-      subtitle="Comece sua jornada financeira hoje"
-    >
+      subtitle="Comece sua jornada financeira hoje">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Nome */}
         <div className="space-y-2">
@@ -112,24 +117,33 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
-          
+
           {/* Requisitos da senha */}
           {formData.password && (
             <div className="mt-3 space-y-2">
               {passwordRequirements.map((req, index) => (
-                <div key={index} className="flex items-center space-x-2 text-xs">
-                  <div className={cn(
-                    "w-4 h-4 rounded-full flex items-center justify-center",
-                    req.met ? "bg-green-100 text-green-600" : "bg-gray-100 text-gray-400"
-                  )}>
+                <div
+                  key={index}
+                  className="flex items-center space-x-2 text-xs">
+                  <div
+                    className={cn(
+                      'w-4 h-4 rounded-full flex items-center justify-center',
+                      req.met
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-gray-100 text-gray-400',
+                    )}>
                     {req.met && <Check className="h-2.5 w-2.5" />}
                   </div>
-                  <span className={req.met ? "text-green-600" : "text-gray-500"}>
+                  <span
+                    className={req.met ? 'text-green-600' : 'text-gray-500'}>
                     {req.text}
                   </span>
                 </div>
@@ -150,24 +164,32 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
               type={showConfirmPassword ? 'text' : 'password'}
               placeholder="••••••••"
               value={formData.confirmPassword}
-              onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+              onChange={(e) =>
+                handleInputChange('confirmPassword', e.target.value)
+              }
               className={cn(
-                "pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500",
-                formData.confirmPassword && formData.password !== formData.confirmPassword && "border-red-300 focus:border-red-500 focus:ring-red-500"
+                'pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500',
+                formData.confirmPassword &&
+                  formData.password !== formData.confirmPassword &&
+                  'border-red-300 focus:border-red-500 focus:ring-red-500',
               )}
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-            >
-              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              {showConfirmPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
-          {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-            <p className="text-xs text-red-600">As senhas não coincidem</p>
-          )}
+          {formData.confirmPassword &&
+            formData.password !== formData.confirmPassword && (
+              <p className="text-xs text-red-600">As senhas não coincidem</p>
+            )}
         </div>
 
         {/* Termos e Condições */}
@@ -175,16 +197,22 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
           <Checkbox
             id="terms"
             checked={acceptTerms}
-            onCheckedChange={setAcceptTerms}
+            onCheckedChange={(checked) => setAcceptTerms(checked === true)}
             className="mt-1"
           />
-          <Label htmlFor="terms" className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+          <Label
+            htmlFor="terms"
+            className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
             Eu aceito os{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a
+              href="#"
+              className="text-blue-600 hover:text-blue-700 font-medium">
               Termos de Uso
             </a>{' '}
             e a{' '}
-            <a href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+            <a
+              href="#"
+              className="text-blue-600 hover:text-blue-700 font-medium">
               Política de Privacidade
             </a>
           </Label>
@@ -194,8 +222,11 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
         <Button
           type="submit"
           className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
-          disabled={isLoading || !acceptTerms || formData.password !== formData.confirmPassword}
-        >
+          disabled={
+            isLoading ||
+            !acceptTerms ||
+            formData.password !== formData.confirmPassword
+          }>
           {isLoading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -219,16 +250,14 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50"
-          >
+            className="h-12 border-gray-300 hover:bg-gray-50">
             <Chrome className="h-4 w-4 mr-2" />
             Google
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50"
-          >
+            className="h-12 border-gray-300 hover:bg-gray-50">
             <Github className="h-4 w-4 mr-2" />
             GitHub
           </Button>
@@ -241,8 +270,7 @@ export function SignupPage({ onNavigate }: SignupPageProps) {
             <button
               type="button"
               onClick={() => onNavigate('login')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
+              className="text-blue-600 hover:text-blue-700 font-medium">
               Fazer login
             </button>
           </p>

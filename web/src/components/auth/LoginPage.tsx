@@ -5,13 +5,9 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { AuthLayout } from './AuthLayout';
 import { Eye, EyeOff, Mail, Lock, Chrome, Github } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { AuthProps } from './types';
 
-interface LoginPageProps {
-  onNavigate: (page: 'login' | 'signup' | 'forgot-password' | 'app') => void;
-}
-
-export function LoginPage({ onNavigate }: LoginPageProps) {
+export function LoginPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -20,7 +16,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simular login
     setTimeout(() => {
       setIsLoading(false);
@@ -31,8 +27,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
   return (
     <AuthLayout
       title="Bem-vindo de volta!"
-      subtitle="Entre na sua conta para continuar"
-    >
+      subtitle="Entre na sua conta para continuar">
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
@@ -72,9 +67,12 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              {showPassword ? (
+                <EyeOff className="h-4 w-4" />
+              ) : (
+                <Eye className="h-4 w-4" />
+              )}
             </button>
           </div>
         </div>
@@ -84,8 +82,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
           <button
             type="button"
             onClick={() => onNavigate('forgot-password')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
-          >
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium">
             Esqueceu a senha?
           </button>
         </div>
@@ -94,8 +91,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
         <Button
           type="submit"
           className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
-          disabled={isLoading}
-        >
+          disabled={isLoading}>
           {isLoading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -119,16 +115,14 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50"
-          >
+            className="h-12 border-gray-300 hover:bg-gray-50">
             <Chrome className="h-4 w-4 mr-2" />
             Google
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50"
-          >
+            className="h-12 border-gray-300 hover:bg-gray-50">
             <Github className="h-4 w-4 mr-2" />
             GitHub
           </Button>
@@ -141,8 +135,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             <button
               type="button"
               onClick={() => onNavigate('signup')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
+              className="text-blue-600 hover:text-blue-700 font-medium">
               Criar conta
             </button>
           </p>

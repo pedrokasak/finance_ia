@@ -1,13 +1,12 @@
-import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Badge } from '@/components/ui/badge';
 import { Menu, Sun, Moon, Bell, Settings, LogOut, Crown } from 'lucide-react';
@@ -20,7 +19,11 @@ interface HeaderProps {
   toggleSidebar: () => void;
 }
 
-export function Header({ currentPage, setCurrentPage, toggleSidebar }: HeaderProps) {
+export function Header({
+  currentPage,
+  setCurrentPage,
+  toggleSidebar,
+}: HeaderProps) {
   const { theme, setTheme } = useTheme();
 
   const getPageTitle = () => {
@@ -48,13 +51,14 @@ export function Header({ currentPage, setCurrentPage, toggleSidebar }: HeaderPro
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
-            className="lg:hidden"
-          >
+            className="lg:hidden">
             <Menu className="h-5 w-5" />
           </Button>
-          
+
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{getPageTitle()}</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              {getPageTitle()}
+            </h1>
             <p className="text-sm text-muted-foreground">
               Gerencie suas finanças de forma inteligente
             </p>
@@ -65,8 +69,7 @@ export function Header({ currentPage, setCurrentPage, toggleSidebar }: HeaderPro
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          >
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
@@ -77,9 +80,14 @@ export function Header({ currentPage, setCurrentPage, toggleSidebar }: HeaderPro
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button
+                variant="ghost"
+                className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src="https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg?auto=compress&cs=tinysrgb&w=400" alt="User" />
+                  <AvatarImage
+                    src="https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg?auto=compress&cs=tinysrgb&w=400"
+                    alt="User"
+                  />
                   <AvatarFallback>JD</AvatarFallback>
                 </Avatar>
               </Button>
@@ -87,7 +95,9 @@ export function Header({ currentPage, setCurrentPage, toggleSidebar }: HeaderPro
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">João da Silva</p>
+                  <p className="text-sm font-medium leading-none">
+                    João da Silva
+                  </p>
                   <p className="text-xs leading-none text-muted-foreground">
                     joao@exemplo.com
                   </p>
