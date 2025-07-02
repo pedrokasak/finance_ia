@@ -1,0 +1,13 @@
+DS_Store
+
+server/node_modules
+server/dist
+server/.env
+server/.env.local
+server/.env.development.local
+
+web/node_modules
+web/dist
+web/.env
+web/.env.local
+web/.env.development.local
