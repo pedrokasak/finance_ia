@@ -10,7 +10,7 @@ test:
 	go test -v ./...
 
 docker-up:
-	docker-compose up -d
+	docker-compose up -d postgres
 
 docker-down:
 	docker-compose down
