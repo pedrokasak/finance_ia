@@ -16,10 +16,16 @@ RUN GOARCH=amd64 GOOS=linux go build -o main .
 FROM alpine:latest
 
 WORKDIR /app
-COPY --from=builder /app/main .
 
+RUN apk add --no-cache postgresql-client
+
+COPY --from=builder /app/main .
+COPY --from=builder /app/wait-for-postgres.sh .
+
+RUN chmod +x ./main ./wait-for-postgres.sh
 RUN chmod +x ./main
 
 EXPOSE 8080
+ENTRYPOINT ["./wait-for-postgres.sh"]
 
 CMD ["./main"]

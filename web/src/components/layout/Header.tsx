@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Menu, Sun, Moon, Bell, Settings, LogOut, Crown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { Page } from '@/App';
+import useAuth from '../../hooks/use-auth';
 
 interface HeaderProps {
   currentPage: Page;
@@ -25,6 +26,7 @@ export function Header({
   toggleSidebar,
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
+  const auth = useAuth();
 
   const getPageTitle = () => {
     switch (currentPage) {
@@ -41,6 +43,11 @@ export function Header({
       default:
         return 'Dashboard';
     }
+  };
+
+  const onSubmit = () => {
+    auth.logout();
+    window.location.href = '/login';
   };
 
   return (
@@ -119,7 +126,7 @@ export function Header({
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <LogOut className="mr-2 h-4 w-4" />
-                <span>Sair</span>
+                <Button variant="ghost" className="p-0" onClick={onSubmit}>Sair</Button>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -1,7 +1,7 @@
 package main
 
 import (
-	userapp "finance-ia/internal/application/user"
+	userapp "finance-ia/internal/application/usecase/user"
 	"finance-ia/internal/config"
 	"finance-ia/internal/config/database"
 	"finance-ia/internal/config/middleware"
@@ -62,8 +62,14 @@ func setupRouter(uh *handlers.UserHandler) *gin.Engine {
 	// Rotas públicas
 	public := router.Group("/api/v1")
 	{
-		public.POST("/register", uh.Register)
-		public.POST("/login", uh.Login)
+		public.POST("/auth/signup", uh.Register)
+		public.POST("/auth/login", uh.Login)
+		// public.POST("/auth/refresh", uh.Refresh)
+		public.POST("/auth/forgot-password", uh.ForgotPassword)
+		public.POST("/auth/reset-password", uh.ResetPassword)
+		public.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
 	}
 
 	// Rotas protegidas
@@ -71,21 +77,11 @@ func setupRouter(uh *handlers.UserHandler) *gin.Engine {
 	protected.Use(middleware.JWTAuth())
 	{
 		// Usuários
-		// protected.GET("/profile", uh.GetProfile)
-		// protected.PUT("/profile", uh.UpdateProfile)
+		protected.GET("/users", uh.GetAllUsers)
+		protected.GET("/user/:id", uh.GetUserByID)
+		protected.PUT("/user/:id", uh.UpdateUser)
+		protected.DELETE("/user/:id", uh.DeleteUser)
 
-		// Transações
-		// protected.POST("/transactions", th.Create)
-		// protected.GET("/transactions", th.List)
-		// protected.GET("/transactions/:id", th.GetByID)
-		// protected.PUT("/transactions/:id", th.Update)
-		// protected.DELETE("/transactions/:id", th.Delete)
-
-		// Categorias
-		// protected.POST("/categories", ch.Create)
-		// protected.GET("/categories", ch.List)
-		// protected.PUT("/categories/:id", ch.Update)
-		// protected.DELETE("/categories/:id", ch.Delete)
 
 		// Relatórios
 		// protected.GET("/reports/monthly", th.MonthlyReport)

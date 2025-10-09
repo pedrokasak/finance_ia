@@ -1,0 +1,47 @@
+export type SignupRequest = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  acceptTerms: boolean;
+};
+
+export type SignupResponse = {
+  success: boolean;
+};
+
+export type LoginRequest = {
+  email: string;
+  password: string;
+  keepAlive?: boolean;
+};
+
+export type AuthenticationResponse = {
+  email: string;
+  password: string;
+  token?: string;
+  success: boolean;
+};
+
+export type LogoutResponse = {
+  success: boolean;
+};
+
+export type ForgotPasswordRequest = {
+  email: string;
+};
+
+export type ForgotPasswordResponse = {
+  message: string;
+};
+
+export type ResetPasswordRequest = {
+  token: string;
+  newPassword: string;
+  confirmNewPassword: string;
+};
+
+export type ResetPasswordResponse = {
+  message: string;
+};

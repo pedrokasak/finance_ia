@@ -37,8 +37,8 @@ func (w *NotificationWorker) StartMonthlySpendingNotifications(ctx context.Conte
 func (w *NotificationWorker) checkMonthlySpendingLimits() {
 	log.Println("Verificando limites de gastos mensais...")
 
-	now := time.Now()
-	lastMonth := now.AddDate(0, -1, 0)
+	// now := time.Now()
+	// lastMonth := now.AddDate(0, -1, 0)
 
 	// Buscar todos os usuários
 	var users []user.User

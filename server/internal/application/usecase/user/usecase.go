@@ -1,6 +1,10 @@
 package user
 
-import "finance-ia/internal/domain/user"
+import (
+	"finance-ia/internal/domain/user"
+
+	"github.com/google/uuid"
+)
 
 type UseCase struct {
 	service *user.Service
@@ -18,16 +22,16 @@ func (uc *UseCase) Login(email, password string) (string, error) {
 	return uc.service.Login(email, password)
 }
 
-func (uc *UseCase) GetProfile(userID uint) (*user.User, error) {
+func (uc *UseCase) GetAll() ([]*user.User, error) {
+	return uc.service.GetAll()
+}
+
+func (uc *UseCase) GetByID(userID uuid.UUID) (*user.User, error) {
 	return uc.service.GetByID(userID)
 }
 
 func (uc *UseCase) GetByEmail(email string) (*user.User, error) {
 	return uc.service.GetByEmail(email)
-}
-
-func (uc *UseCase) GetByID(id uint) (*user.User, error) {
-	return uc.service.GetByID(id)
 }
 
 func (uc *UseCase) Update(user *user.User) error {
@@ -36,4 +40,12 @@ func (uc *UseCase) Update(user *user.User) error {
 
 func (uc *UseCase) Delete(user *user.User) error {
 	return uc.service.Delete(user)
+}
+
+func (uc *UseCase) ForgotPassword(email string) error {
+	return uc.service.ForgotPassword(email)
+}
+
+func (uc *UseCase) ResetPassword(token, newPassword string) error {
+	return uc.service.ResetPassword(token, newPassword)
 }

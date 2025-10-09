@@ -10,7 +10,7 @@ test:
 	go test -v ./...
 
 docker-up:
-	docker-compose up -d postgres
+	docker-compose up --build -d
 
 docker-down:
 	docker-compose down
@@ -27,3 +27,7 @@ install-deps:
 
 dev:
 	air # Para hot reload (instale: go install github.com/cosmtrek/air@latest)
+
+test:
+	go test ./... -cover -v
+

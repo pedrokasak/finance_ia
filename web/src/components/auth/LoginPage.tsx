@@ -6,6 +6,10 @@ import { Separator } from '@/components/ui/separator';
 import { AuthLayout } from './AuthLayout';
 import { Eye, EyeOff, Mail, Lock, Chrome, Github } from 'lucide-react';
 import { AuthProps } from './types';
+import { z } from 'zod';
+import { toast } from 'sonner';
+import useAuth from '../../hooks/use-auth';
+import { handleError } from '../../utils/errors';
 
 export function LoginPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -13,15 +17,69 @@ export function LoginPage({ onNavigate }: AuthProps) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
+
+  const auth = useAuth();
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    await handleLogin();
+  };
 
-    // Simular login
-    setTimeout(() => {
-      setIsLoading(false);
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setErrors({});
+
+    // Validação com Zod
+    const schema = z.object({
+      email: z.string().email({ message: 'Email inválido' }),
+      password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres' }),
+    });
+    
+    try {
+      await schema.parseAsync({ email, password });
+      const authResp = await auth.login(email, password);
+
+      if (!authResp.success) {
+        toast.error('Falha no login. Verifique suas credenciais e tente novamente.');
+      } 
       onNavigate('app');
-    }, 1500);
+    } catch (err: unknown) {
+      if (err instanceof z.ZodError) {
+        const fieldErrors: { email?: string; password?: string } = {};
+        err.errors.forEach((e) => {
+          const key = String(e.path[0] || '');
+          if (key === 'email' || key === 'password') {
+            fieldErrors[key as 'email' | 'password'] = e.message;
+          }
+        });
+        setErrors(fieldErrors);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } else if (err && typeof err === 'object' && (err as any).response?.data) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const data = (err as any).response.data;
+        // erro vindo de uma requisição (axios/fetch com corpo)
+        if (data?.errors) {
+          const msg = handleError.validationError(data);
+          setErrors({ form: msg });
+          toast.error(msg);
+        } else {
+          const msg = handleError.authError(data);
+          setErrors({ form: msg });
+          toast.error(msg);
+        }
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        const msg = handleError.authError(err as { message: string });
+        setErrors({ form: msg });
+        toast.error(msg);
+      } else {
+        setErrors({ form: 'Erro desconhecido' });
+        toast.error('Erro desconhecido');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -46,6 +104,7 @@ export function LoginPage({ onNavigate }: AuthProps) {
               required
             />
           </div>
+          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
         </div>
 
         {/* Senha */}
@@ -75,6 +134,7 @@ export function LoginPage({ onNavigate }: AuthProps) {
               )}
             </button>
           </div>
+          {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
         </div>
 
         {/* Esqueci a senha */}
@@ -86,6 +146,9 @@ export function LoginPage({ onNavigate }: AuthProps) {
             Esqueceu a senha?
           </button>
         </div>
+
+        {/* Erro geral do formulário */}
+        {errors.form && <p className="text-center text-sm text-red-600">{errors.form}</p>}
 
         {/* Botão de Login */}
         <Button
@@ -144,3 +207,4 @@ export function LoginPage({ onNavigate }: AuthProps) {
     </AuthLayout>
   );
 }
+// ...existing code...

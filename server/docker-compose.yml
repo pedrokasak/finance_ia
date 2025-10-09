@@ -4,26 +4,35 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: finance_ia_app
+    env_file:
+      - ./.env
     ports:
-      - '8080:8080'
+      - "8080:8080"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://financeuser:financepass@postgres:5432/financeapp?sslmode=disable
-      JWT_SECRET: your-super-secret-jwt-key
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
     volumes:
       - ./config:/app/config
+      - ./.env:/app/.env
 
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_DB: financeapp
-      POSTGRES_USER: financeuser
-      POSTGRES_PASSWORD: financepass
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

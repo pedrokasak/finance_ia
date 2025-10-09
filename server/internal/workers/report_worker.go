@@ -54,8 +54,8 @@ func (w *ReportWorker) generateMonthlyReportsForAllUsers() {
 }
 
 func (w *ReportWorker) generateUserMonthlyReport(userID uuid.UUID, year int, month time.Month) {
-	startDate := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
-	endDate := startDate.AddDate(0, 1, -1)
+	// startDate := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
+	// endDate := startDate.AddDate(0, 1, -1)
 
 	var totalIncome, totalExpense float64
 
