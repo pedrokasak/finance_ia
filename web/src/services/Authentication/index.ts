@@ -13,14 +13,14 @@ class AuthenticationService implements AuthenticationInterface {
     authentication
       .login(data.email, data.password)
       .then((response) => {
-        console.log('Login successful:', response);
         localStorage.setItem('authToken', response.token);
-        return {
+        const data = {
           email: response.email,
           password: response.password,
           token: response.token,
           success: true,
         };
+        return data;
       })
       .catch((error) => {
         throw new Error(`Login failed: ${error.message}`);

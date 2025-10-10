@@ -5,90 +5,75 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { AuthLayout } from './AuthLayout';
 import { Eye, EyeOff, Mail, Lock, Chrome, Github } from 'lucide-react';
-import { AuthProps } from './types';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { errorHandler } from '../../utils/errors';
 import useAuth from '../../hooks/use-auth';
-import { handleError } from '../../utils/errors';
+
+interface AuthProps {
+  onNavigate: (page: string) => void;
+}
+
+const loginSchema = z.object({
+  email: z.string().email({ message: 'Email inválido' }),
+  password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres' }),
+});
+
 
 export function LoginPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<{ 
+    email?: string; 
+    password?: string; 
+    form?: string 
+  }>({});
 
-  const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
-
-  const auth = useAuth();
-
+  const { login, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await handleLogin();
-  };
-
-  const handleLogin = async () => {
-    setIsLoading(true);
     setErrors({});
 
-    // Validação com Zod
-    const schema = z.object({
-      email: z.string().email({ message: 'Email inválido' }),
-      password: z.string().min(6, { message: 'A senha deve ter pelo menos 6 caracteres' }),
-    });
-    
-    try {
-      await schema.parseAsync({ email, password });
-      const authResp = await auth.login(email, password);
+    const validation = loginSchema.safeParse({ email, password });
 
-      if (!authResp.success) {
-        toast.error('Falha no login. Verifique suas credenciais e tente novamente.');
-      } else {
-        onNavigate('app');
-        toast.success('Login realizado com sucesso!');
-      }
+    if (!validation.success) {
+      const fieldErrors: { email?: string; password?: string } = {};
+      validation.error.errors.forEach((err) => {
+        const field = err.path[0] as 'email' | 'password';
+        fieldErrors[field] = err.message;
+      });
+      setErrors(fieldErrors);
+      return;
+    }
+
+    try {
+      const response = await login(email, password);
+
+      console.log('Login LoginPage:', response);
       
-    } catch (err: unknown) {
-      if (err instanceof z.ZodError) {
-        const fieldErrors: { email?: string; password?: string } = {};
-        err.errors.forEach((e) => {
-          const key = String(e.path[0] || '');
-          if (key === 'email' || key === 'password') {
-            fieldErrors[key as 'email' | 'password'] = e.message;
-          }
-        });
-        setErrors(fieldErrors);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } else if (err && typeof err === 'object' && (err as any).response?.data) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const data = (err as any).response.data;
-        // erro vindo de uma requisição (axios/fetch com corpo)
-        if (data?.errors) {
-          const msg = handleError.validationError(data);
-          setErrors({ form: msg });
-          toast.error(msg);
-        } else {
-          const msg = handleError.authError(data);
-          setErrors({ form: msg });
-          toast.error(msg);
-        }
-      } else if (err && typeof err === 'object' && 'message' in err) {
-        const msg = handleError.authError(err as { message: string });
-        setErrors({ form: msg });
-        toast.error(msg);
+      if (response.success) {
+        toast.success('Login realizado com sucesso!');
+        onNavigate('app');
       } else {
-        setErrors({ form: 'Erro desconhecido' });
-        toast.error('Erro desconhecido');
+        const message = 'Falha no login. Verifique suas credenciais';
+        setErrors({ form: message });
+        toast.error(message);
       }
-    } finally {
-      setIsLoading(false);
+    } catch (error) {
+      const message = errorHandler.handle(error);
+      setErrors({ form: message });
+      toast.error(message);
     }
   };
+
 
   return (
     <AuthLayout
       title="Bem-vindo de volta!"
-      subtitle="Entre na sua conta para continuar">
+      subtitle="Entre na sua conta para continuar"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
@@ -103,11 +88,14 @@ export function LoginPage({ onNavigate }: AuthProps) {
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              disabled={loading}
+              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
           </div>
-          {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+          {errors.email && (
+            <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+          )}
         </div>
 
         {/* Senha */}
@@ -123,13 +111,16 @@ export function LoginPage({ onNavigate }: AuthProps) {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              disabled={loading}
+              className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              disabled={loading}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
@@ -137,7 +128,9 @@ export function LoginPage({ onNavigate }: AuthProps) {
               )}
             </button>
           </div>
-          {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+          {errors.password && (
+            <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+          )}
         </div>
 
         {/* Esqueci a senha */}
@@ -145,20 +138,44 @@ export function LoginPage({ onNavigate }: AuthProps) {
           <button
             type="button"
             onClick={() => onNavigate('forgot-password')}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+            disabled={loading}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+          >
             Esqueceu a senha?
           </button>
         </div>
 
         {/* Erro geral do formulário */}
-        {errors.form && <p className="text-center text-sm text-red-600">{errors.form}</p>}
+        {errors.form && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg
+                  className="h-5 w-5 text-red-400"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{errors.form}</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Botão de Login */}
         <Button
           type="submit"
-          className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
-          disabled={isLoading}>
-          {isLoading ? (
+          className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+          disabled={loading}
+        >
+          {loading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Entrando...</span>
@@ -181,14 +198,18 @@ export function LoginPage({ onNavigate }: AuthProps) {
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50">
+            className="h-12 border-gray-300 hover:bg-gray-50"
+            disabled={loading}
+          >
             <Chrome className="h-4 w-4 mr-2" />
             Google
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50">
+            className="h-12 border-gray-300 hover:bg-gray-50"
+            disabled={loading}
+          >
             <Github className="h-4 w-4 mr-2" />
             GitHub
           </Button>
@@ -201,7 +222,9 @@ export function LoginPage({ onNavigate }: AuthProps) {
             <button
               type="button"
               onClick={() => onNavigate('signup')}
-              className="text-blue-600 hover:text-blue-700 font-medium">
+              disabled={loading}
+              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+            >
               Criar conta
             </button>
           </p>
@@ -210,4 +233,3 @@ export function LoginPage({ onNavigate }: AuthProps) {
     </AuthLayout>
   );
 }
-// ...existing code...
