@@ -48,9 +48,9 @@ func (m *mockUserUseCase) ResetPassword(token, newPassword string) error   { ret
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
-	r.POST("/auth/signup", handler.Register)
-	r.PATCH("/user/update", handler.UpdateUser)
-	r.DELETE("/user/delete", handler.DeleteUser)
+	r.POST("/user/register", handler.Register)
+	r.PATCH("/user/update/:id", handler.UpdateUser)
+	r.DELETE("/user/delete/:id", handler.DeleteUser)
 	r.GET("/user/:id", handler.GetUserByID)
 	r.GET("/users", handler.GetAllUsers)
 	return r
@@ -69,14 +69,14 @@ func TestRegisterUser_Success(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", "/auth/signup", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("POST", "/user/register", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusCreated, resp.Code)
-	assert.Contains(t, resp.Body.String(), "pedro@example.com")
+	assert.Contains(t, resp.Body.String(), "pedro@test.com")
 }
 
 func TestRegisterUser_AlreadyExists(t *testing.T) {
@@ -92,7 +92,7 @@ func TestRegisterUser_AlreadyExists(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 
-	req, _ := http.NewRequest("POST", "/auth/signup", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("POST", "/user/register", bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
@@ -145,7 +145,7 @@ func TestGetAllUsers_Success(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "[]")
+	assert.Contains(t, resp.Body.String(), "nenhum usuário encontrado")
 }
 
 func TestGetAllUsers_Empty(t *testing.T) {
@@ -160,7 +160,7 @@ func TestGetAllUsers_Empty(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "[]")
+	assert.Contains(t, resp.Body.String(), "nenhum usuário encontrado")
 }
 
 func TestUpdateUser_Success(t *testing.T) {
@@ -172,10 +172,10 @@ func TestUpdateUser_Success(t *testing.T) {
 		"id": uuid.New().String(),
 	}
 	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("PATCH", "/user/update", bytes.NewBuffer(jsonBody))
+	userID := uuid.New()
+	req, _ := http.NewRequest("PATCH", "/user/update/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	req = req.WithContext(context.WithValue(req.Context(), "id", jsonBody))
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)	
