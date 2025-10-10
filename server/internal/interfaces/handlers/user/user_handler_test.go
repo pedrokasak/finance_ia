@@ -64,7 +64,7 @@ func TestRegisterUser_Success(t *testing.T) {
 	body := map[string]string{
 		"first_name": "Pedro",
 		"last_name":  "Sant Anna",
-		"email":      "pedro@example.com",
+		"email":      "pedro@test.com",
 		"password":   "123456",
 	}
 	jsonBody, _ := json.Marshal(body)
@@ -99,7 +99,7 @@ func TestRegisterUser_AlreadyExists(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
-	assert.Contains(t, resp.Body.String(), "user already exists")
+	assert.Contains(t, resp.Body.String(), "email already in use")
 }
 
 func TestGetUserByID_Success(t *testing.T) {

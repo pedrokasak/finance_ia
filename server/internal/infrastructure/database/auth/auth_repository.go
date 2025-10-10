@@ -74,3 +74,13 @@ func (r *AuthRepository) ValidateToken(tokenString string) (*jwt.Token, error) {
 	}
 	return token, nil
 }
+
+func (r *AuthRepository) Logout(token string) error {
+		if token == "" {
+			return errors.New("token is required")
+		}
+		// Invalidate the token (this is a simple approach; consider a token blacklist for production)
+		// Here we would typically remove or blacklist the token
+		// For simplicity, we'll just return nil to indicate success
+		return nil
+}

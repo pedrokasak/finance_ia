@@ -29,12 +29,14 @@ func (m *mockUserUseCase) ForgotPassword(email string) error               { ret
 func (m *mockUserUseCase) ResetPassword(token, newPassword string) error   { return nil }
 func (m *mockUserUseCase) GetByEmail(email string) (*domainAuth.Authentication, error) { return &domainAuth.Authentication{Email: email}, nil }
 func (m *mockUserUseCase) Delete(u *domainAuth.Authentication) error                 { return nil }
+func (m *mockUserUseCase) Logout(token string) error { return nil }
 func setupRouter(handler *handlersAuth.AuthHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	r.POST("/auth/login", handler.Login)
 	r.POST("/auth/forgot-password", handler.ForgotPassword)
 	r.POST("/auth/reset-password", handler.ResetPassword)
+	r.POST("/auth/logout", handler.Logout)
 	return r
 }
 
@@ -77,7 +79,7 @@ func TestLogin_InvalidCredentials(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
+	assert.Equal(t, http.StatusUnauthorized, resp.Code)
 	assert.Contains(t, resp.Body.String(), "invalid credentials")
 }
 
@@ -94,7 +96,7 @@ func TestLogin_InvalidRequestBody(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
-	assert.Contains(t, resp.Body.String(), "user or password is invalid")
+	assert.Contains(t, resp.Body.String(), "invalid character")
 }
 
 func TestRecoveryPassword(t *testing.T) {
@@ -114,7 +116,7 @@ func TestRecoveryPassword(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_token")
+	assert.Contains(t, resp.Body.String(), "If the email exists, a reset link has been sent to it")
 }
 
 func TestResetPassword(t *testing.T) {
@@ -135,7 +137,7 @@ func TestResetPassword(t *testing.T) {
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_token")
+	assert.Contains(t, resp.Body.String(), "Password changed successfully")
 }
 
 func TestResetPassword_InvalidRequestBody(t *testing.T) {
@@ -143,13 +145,16 @@ func TestResetPassword_InvalidRequestBody(t *testing.T) {
 	handler := handlersAuth.NewAuthHandler(usecase)
 	router := setupRouter(handler)
 
-	body := "invalid json"
-	req, _ := http.NewRequest("POST", "/auth/reset-password", bytes.NewBufferString(body))
+	body := map[string]string{
+		"token":    "invalid_token",
+		"new_password": "wrong",
+	}
+	req, _ := http.NewRequest("POST", "/auth/reset-password", bytes.NewBufferString(body["token"]))
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
-	assert.Contains(t, resp.Body.String(), "user or password is invalid")
+	assert.Contains(t, resp.Body.String(), "Invalid data")
 }

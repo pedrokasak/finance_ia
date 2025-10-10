@@ -20,6 +20,7 @@ func (h *AuthHandler) RegisterRoutes(public, protected gin.IRouter) {
     public.POST("/auth/login", h.Login)
     public.POST("/auth/forgot-password", h.ForgotPassword)
     public.POST("/auth/reset-password", h.ResetPassword)
+    protected.POST("/auth/logout", h.Logout)
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -28,16 +29,21 @@ func (h *AuthHandler) Login(c *gin.Context) {
         Password string `json:"password" binding:"required"`
     }
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid data", "error": err.Error()})
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid data"})
         return
     }
 
     token, err := h.usecase.Login(req.Email, req.Password)
     if err != nil {
-        // mapear erros do usecase para status apropriado
-        c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid credentials", "error": err.Error()})
+        c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error(), "message": "Not authorized"})
         return
     }
+
+    if token == "" {
+        c.JSON(http.StatusForbidden, gin.H{"message": "Invalid credentials"})
+        return
+    }
+    
 
     c.JSON(http.StatusOK, gin.H{
         "email":   req.Email,
@@ -51,7 +57,7 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
         Email string `json:"email" binding:"required,email"`
     }
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid data", "error": err.Error()})
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid data"})
         return
     }
 
@@ -69,7 +75,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
         NewPassword string `json:"new_password" binding:"required,min=6"`
     }
     if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid data", "error": err.Error()})
+        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid data"})
         return
     }
 
@@ -79,4 +85,20 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
     }
 
     c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+    authHeader := c.GetHeader("Authorization")
+    if authHeader == "" {
+        c.JSON(http.StatusBadRequest, gin.H{"message": "Authorization header required"})
+        return
+    }
+
+    token := authHeader[len("Bearer "):]
+    if err := h.usecase.Logout(token); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"message": "Error logging out", "error": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
 }

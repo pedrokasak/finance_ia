@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/golang-jwt/jwt"
@@ -98,4 +99,46 @@ func (s *Service) ValidateToken(tokenString string) (*jwt.Token, error) {
 		return nil, errors.New("invalid token")
 	}
 	return token, nil
+}
+
+func (s *Service) Logout(tokenString string) error {
+    if tokenString == "" {
+        return errors.New("token is required")
+    }
+
+    jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+    parsed, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, errors.New("unexpected signing method")
+        }
+        return jwtSecret, nil
+    })
+    if err != nil || !parsed.Valid {
+        return errors.New("invalid token")
+    }
+
+    claims, ok := parsed.Claims.(jwt.MapClaims)
+    if !ok {
+        return errors.New("invalid token claims")
+    }
+
+    var email string
+    if e, ok := claims["email"].(string); ok && e != "" {
+        email = e
+    } else if uid, ok := claims["user_id"].(string); ok && uid != "" {
+        _ = uid
+    } else {
+        return errors.New("token does not contain email/user_id")
+    }
+    authObj, err := s.repo.FindByEmail(email)
+    if err != nil {
+        return err
+    }
+		// Invalidate the token (this is a simple approach; consider a token blacklist for production)
+    authObj.Token = ""
+    if err := s.repo.Update(authObj); err != nil {
+        return fmt.Errorf("failed to invalidate token: %w", err)
+    }
+
+    return nil
 }

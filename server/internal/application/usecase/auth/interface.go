@@ -11,6 +11,7 @@ type IAuthUseCase interface {
 	ForgotPassword(email string) error
 	ResetPassword(token, newPassword string) error
 	Update(user *auth.Authentication) error
+	Logout(token string) error
 }
 
 var _ IAuthUseCase = &UseCase{}

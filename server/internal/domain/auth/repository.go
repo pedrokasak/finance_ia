@@ -11,4 +11,5 @@ type Repository interface {
 	RecoveryPassword(email string) error
 	Update(auth *Authentication) error
 	ValidateToken(tokenString string) (*jwt.Token, error)
+	Logout(token string) error
 }

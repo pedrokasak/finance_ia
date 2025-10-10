@@ -32,3 +32,7 @@ func (uc *UseCase) GetByEmail(email string) (*auth.Authentication, error) {
 func (uc *UseCase) Update(user *auth.Authentication) error {
 	return uc.service.Update(user)
 }
+
+func (uc *UseCase) Logout(token string) error {
+	return uc.service.Logout(token)
+}

@@ -2,13 +2,16 @@ package auth
 
 import (
 	"errors"
-	"regexp"
+
+	"github.com/badoux/checkmail"
 )
 
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
-
 func ValidateEmailFormat(email string) error {
-		if !emailRegex.MatchString(email) {
+		if email == "" {
+				return errors.New("email é obrigatório")
+		}
+		err := checkmail.ValidateFormat(email)
+		if err != nil {
 				return errors.New("formato de email inválido")
 		}
 		return nil
