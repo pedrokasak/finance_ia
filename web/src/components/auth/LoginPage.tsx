@@ -43,8 +43,11 @@ export function LoginPage({ onNavigate }: AuthProps) {
 
       if (!authResp.success) {
         toast.error('Falha no login. Verifique suas credenciais e tente novamente.');
-      } 
-      onNavigate('app');
+      } else {
+        onNavigate('app');
+        toast.success('Login realizado com sucesso!');
+      }
+      
     } catch (err: unknown) {
       if (err instanceof z.ZodError) {
         const fieldErrors: { email?: string; password?: string } = {};

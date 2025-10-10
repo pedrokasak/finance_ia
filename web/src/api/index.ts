@@ -19,7 +19,7 @@ export const fetchApi = async (endpoint: string, options = {}) => {
 
 const authentication = {
   login: async (email: string, password: string) => {
-    const response = await fetchApi(`auth/login/`, {
+    const response = await fetchApi(`auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,11 +27,9 @@ const authentication = {
       body: JSON.stringify({ email, password }),
     });
 
-    if (!response.ok) {
-      throw new Error('Network response was not ok');
-    }
-    const data = await response.json();
-    return data;
+    console.log('Login successful:', response);
+
+    return response;
   },
   signup: async (data: SignupRequest) => {
     return await fetchApi(`auth/signup/`, {
