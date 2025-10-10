@@ -1,6 +1,7 @@
 package database
 
 import (
+	"finance-ia/internal/domain/auth"
 	"finance-ia/internal/domain/user"
 	"log"
 
@@ -44,6 +45,7 @@ func TestConnection(databaseURL string) bool {
 func Migrate(db *gorm.DB) error {
     return db.AutoMigrate(
         &user.User{},
+				&auth.Authentication{},
       
     )
 }

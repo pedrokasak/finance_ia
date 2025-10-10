@@ -16,6 +16,12 @@ func NewAuthHandler(uc auth.IAuthUseCase) *AuthHandler {
     return &AuthHandler{usecase: uc}
 }
 
+func (h *AuthHandler) RegisterRoutes(public, protected gin.IRouter) {
+    public.POST("/auth/login", h.Login)
+    public.POST("/auth/forgot-password", h.ForgotPassword)
+    public.POST("/auth/reset-password", h.ResetPassword)
+}
+
 func (h *AuthHandler) Login(c *gin.Context) {
     var req struct {
         Email    string `json:"email" binding:"required,email"`

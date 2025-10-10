@@ -40,9 +40,15 @@ func (r *UserRepository) FindAll() ([]*user.User, error) {
 
 func (r *UserRepository) FindByEmail(email string) (*user.User, error) {
 	var u user.User
-	if err := r.db.Where("email = ?", email).First(&u).Error; err != nil {
-		return nil, err
-	}
+	if err := r.db.Where("email = ?", email).First(&u).Error; err == nil {
+        return &user.User{
+            ID:        u.ID,
+            Email:     u.Email,
+            Password:  u.Password,
+            CreatedAt: u.CreatedAt,
+            UpdatedAt: u.UpdatedAt,
+        }, nil
+    }
 	return &u, nil
 }
 

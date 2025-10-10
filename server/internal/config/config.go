@@ -27,3 +27,11 @@ func GetEnv(key string) string {
 	}
 	return value
 }
+
+func EnvironmentMode() string {
+	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "debug"
+	}
+	return env
+}

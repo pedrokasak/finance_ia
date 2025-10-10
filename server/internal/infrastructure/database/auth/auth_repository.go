@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"finance-ia/internal/domain/auth"
+	userdomain "finance-ia/internal/domain/user"
 	"os"
 
 	"github.com/golang-jwt/jwt"
@@ -18,11 +19,17 @@ func NewAuthRepository(db *gorm.DB) *AuthRepository {
 }
 
 func (r *AuthRepository) FindByEmail(email string) (*auth.Authentication, error) {
-	var u auth.Authentication
-	if err := r.db.Where("email = ?", email).First(&u).Error; err != nil {
-		return nil, err
-	}
-	return &u, nil
+    var u userdomain.User
+    if err := r.db.Where("email = ?", email).First(&u).Error; err == nil {
+        return &auth.Authentication{
+            ID:        u.ID,
+            Email:     u.Email,
+            Password:  u.Password,
+            CreatedAt: u.CreatedAt,
+            UpdatedAt: u.UpdatedAt,
+        }, nil
+    }
+    return nil, gorm.ErrRecordNotFound
 }
 
 func (r *AuthRepository) Login(email, password string) (string, error) {

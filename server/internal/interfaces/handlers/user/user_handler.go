@@ -16,6 +16,14 @@ func NewUserHandler(uc user.IUserUseCase) *UserHandler {
 	return &UserHandler{usecase: uc}
 }
 
+func (h *UserHandler) RegisterRoutes(public, protected gin.IRouter) {
+    public.POST("/user/register", h.Register)
+    protected.GET("/users/", h.GetAllUsers)
+    protected.GET("/user/:id", h.GetUserByID)
+		protected.PUT("/user/update/:id", h.UpdateUser)
+		protected.DELETE("/user/delete/:id", h.DeleteUser)
+}
+
 func (h *UserHandler) Register(c *gin.Context) {
 	var req struct {
 		FirstName string `json:"first_name"`
@@ -27,6 +35,13 @@ func (h *UserHandler) Register(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "dados inválidos"})
 		return
 	}
+	
+	_, err := h.usecase.GetByEmail(req.Email)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "email already in use"})
+		return
+	}
+
 	user, err := h.usecase.Register(req.FirstName, req.LastName, req.Email, req.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -49,7 +64,7 @@ func (h *UserHandler) GetAllUsers(c *gin.Context) {
 }
 
 func (h *UserHandler) GetUserByID(c *gin.Context) {
-    userIDStr := c.MustGet("id").(string)
+		userIDStr := c.Param("id")
     userID, err := uuid.Parse(userIDStr)
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
@@ -63,50 +78,66 @@ func (h *UserHandler) GetUserByID(c *gin.Context) {
     c.JSON(http.StatusOK, user)
 }
 func (h *UserHandler) UpdateUser(c *gin.Context) {
-	var req struct {
-		ID        uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data"})
-		return
-	}
+    userIDStr := c.Param("id")
+    userID, err := uuid.Parse(userIDStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+        return
+    }
 
-	userID := c.MustGet("id").(string)
-	user, err := h.usecase.GetByEmail(userID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "usuário não encontrado"})
-		return
-	}
+    var req struct {
+				ID				uuid.UUID `json:"id"`
+				Email     string `json:"email"`
+        FirstName string `json:"first_name"`
+        LastName  string `json:"last_name"`
+    }
+    if err := c.ShouldBindJSON(&req); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "dados inválidos"})
+        return
+    }
 
-	user.ID = req.ID
+    userObj, err := h.usecase.GetByID(userID)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "usuário não encontrado"})
+        return
+    }
 
-	if err := h.usecase.Update(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao atualizar perfil"})
-		return
-	}
+		if req.Email != "" {
+			userObj.Email = req.Email
+		}
 
-	c.JSON(http.StatusOK, user)
+    if req.FirstName != "" {
+        userObj.FirstName = req.FirstName
+    }
+    if req.LastName != "" {
+        userObj.LastName = req.LastName
+    }
+
+    if err := h.usecase.Update(userObj); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao atualizar perfil"})
+        return
+    }
+    c.JSON(http.StatusOK, userObj)
 }
 
 func (h *UserHandler) DeleteUser(c *gin.Context) {
-	userIDStr := c.MustGet("id").(string)
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
-		return
-	}
+    userIDStr := c.Param("id")
+    userID, err := uuid.Parse(userIDStr)
+    if err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "ID inválido"})
+        return
+    }
 
-	user, err := h.usecase.GetByID(userID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "usuário não encontrado"})
-		return
-	}
+    userObj, err := h.usecase.GetByID(userID)
+    if err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "usuário não encontrado"})
+        return
+    }
 
-	if err := h.usecase.Delete(user); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao deletar usuário"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully", "user": user})
+    if err := h.usecase.Delete(userObj); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "erro ao deletar usuário"})
+        return
+    }
+    c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully", "user": userObj})
 }
 

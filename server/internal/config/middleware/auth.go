@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -17,10 +18,12 @@ func JWTAuth() gin.HandlerFunc {
 			return
 		}
 
+		secretKey := os.Getenv("JWT_SECRET")
+
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte("your-secret-key"), nil
+			return []byte(secretKey), nil
 		})
 
 		if err != nil || !token.Valid {
