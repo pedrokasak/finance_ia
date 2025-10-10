@@ -2,10 +2,11 @@ package handlers_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	domainUser "finance-ia/internal/domain/user"
-	"finance-ia/internal/interfaces/handlers"
+	handlers "finance-ia/internal/interfaces/handlers/user"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,9 +49,10 @@ func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
 	r.POST("/auth/signup", handler.Register)
-	r.POST("/auth/login", handler.Login)
-	r.POST("/auth/forgot-password", handler.ForgotPassword)
-	r.POST("/auth/reset-password", handler.ResetPassword)
+	r.PATCH("/user/update", handler.UpdateUser)
+	r.DELETE("/user/delete", handler.DeleteUser)
+	r.GET("/user/:id", handler.GetUserByID)
+	r.GET("/users", handler.GetAllUsers)
 	return r
 }
 
@@ -100,101 +102,106 @@ func TestRegisterUser_AlreadyExists(t *testing.T) {
 	assert.Contains(t, resp.Body.String(), "user already exists")
 }
 
-func TestLogin_Success(t *testing.T) {
+func TestGetUserByID_Success(t *testing.T) {
 	usecase := &mockUserUseCase{}
 	handler := handlers.NewUserHandler(usecase)
 	router := setupRouter(handler)
 
-	body := map[string]string{
-		"email":    "pedro@example.com",
-		"password": "123456",
-	}
-	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBuffer(jsonBody))
+	userID := uuid.New()
+	req, _ := http.NewRequest("GET", "/user/"+userID.String(), nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_token")
+	assert.Contains(t, resp.Body.String(), userID.String())
 }
 
-func TestLogin_InvalidCredentials(t *testing.T) {
+func TestGetUserByID_NotFound(t *testing.T) {
 	usecase := &mockUserUseCase{}
 	handler := handlers.NewUserHandler(usecase)
 	router := setupRouter(handler)
 
-	body := map[string]string{
-		"email":    "invalid@example.com",
-		"password": "wrong",
-	}
-	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("GET", "/user/invalid-uuid", nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
-	assert.Contains(t, resp.Body.String(), "invalid credentials")
+	assert.Contains(t, resp.Body.String(), "ID inválido")
 }
 
-func TestLogin_InvalidRequestBody(t *testing.T) {
+func TestGetAllUsers_Success(t *testing.T) {
 	usecase := &mockUserUseCase{}
 	handler := handlers.NewUserHandler(usecase)
 	router := setupRouter(handler)
 
-	body := "invalid json"
-	req, _ := http.NewRequest("POST", "/auth/login", bytes.NewBufferString(body))
-	req.Header.Set("Content-Type", "application/json")
-	resp := httptest.NewRecorder()
-
-	router.ServeHTTP(resp, req)
-
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
-	assert.Contains(t, resp.Body.String(), "user or password is invalid")
-}
-
-func TestRecoveryPassword(t *testing.T) {
-	usecase:= &mockUserUseCase{}
-	handler := handlers.NewUserHandler(usecase)
-	router := setupRouter(handler)
-
-	body := map[string]string{
-		"email": "pedro@example.com",
-	}
-	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("POST", "/auth/forgot-password", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("GET", "/users", nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_token")
+	assert.Contains(t, resp.Body.String(), "[]")
 }
 
-func TestResetPassword(t *testing.T) {
-	usecase:= &mockUserUseCase{}
+func TestGetAllUsers_Empty(t *testing.T) {
+	usecase := &mockUserUseCase{}
 	handler := handlers.NewUserHandler(usecase)
 	router := setupRouter(handler)
 
-	body := map[string]string{
-		"token": "valid_token",
-		"new_password": "newpassword123",
-	}
-	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("POST", "/auth/reset-password", bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("GET", "/users", nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_token")
+	assert.Contains(t, resp.Body.String(), "[]")
 }
+
+func TestUpdateUser_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlers.NewUserHandler(usecase)
+	router := setupRouter(handler)
+
+	body := map[string]string{
+		"id": uuid.New().String(),
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest("PATCH", "/user/update", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)	
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Contains(t, resp.Body.String(), "mocked_id")
+}
+
+func TestDeleteUser_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlers.NewUserHandler(usecase)
+	router := setupRouter(handler)
+
+	body := map[string]string{
+		"id": uuid.New().String(),
+	}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest("DELETE", "/user/delete", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+ req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Contains(t, resp.Body.String(), "user deleted successfully")
+}
+

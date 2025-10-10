@@ -18,10 +18,6 @@ func (uc *UseCase) Register(firstName, LastName, email, password string) (*user.
 	return uc.service.Register(firstName, LastName, email, password)
 }
 
-func (uc *UseCase) Login(email, password string) (string, error) {
-	return uc.service.Login(email, password)
-}
-
 func (uc *UseCase) GetAll() ([]*user.User, error) {
 	return uc.service.GetAll()
 }
@@ -40,12 +36,4 @@ func (uc *UseCase) Update(user *user.User) error {
 
 func (uc *UseCase) Delete(user *user.User) error {
 	return uc.service.Delete(user)
-}
-
-func (uc *UseCase) ForgotPassword(email string) error {
-	return uc.service.ForgotPassword(email)
-}
-
-func (uc *UseCase) ResetPassword(token, newPassword string) error {
-	return uc.service.ResetPassword(token, newPassword)
 }

@@ -1,13 +1,17 @@
 package main
 
 import (
+	authapp "finance-ia/internal/application/usecase/auth"
 	userapp "finance-ia/internal/application/usecase/user"
 	"finance-ia/internal/config"
 	"finance-ia/internal/config/database"
 	"finance-ia/internal/config/middleware"
+	"finance-ia/internal/domain/auth"
 	"finance-ia/internal/domain/user"
+	infraauth "finance-ia/internal/infrastructure/database/auth"
 	infrauser "finance-ia/internal/infrastructure/database/user"
-	"finance-ia/internal/interfaces/handlers"
+	authHandlers "finance-ia/internal/interfaces/handlers/auth"
+	useHandlers "finance-ia/internal/interfaces/handlers/user"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -35,17 +39,23 @@ func main() {
 
 		// Repositório do usuário
     userRepo := infrauser.NewUserRepository(db)
+		authRepo := infraauth.NewAuthRepository(db)
 		
     // Service do domínio
-    userService := user.NewService(userRepo);
+    userService := user.NewService(userRepo)
+		authService := auth.NewService(authRepo)
+
+		// Use case da aplicação
 
 		userUsecase := userapp.NewUseCase(userService)
-		
+		authUsecase := authapp.NewUseCase(authService)
+
     // Handler
-		userHandler := handlers.NewUserHandler(userUsecase)
+		userHandler := useHandlers.NewUserHandler(userUsecase)
+		authHandler := authHandlers.NewAuthHandler(authUsecase)
 
     // Configurar router
-    router := setupRouter(userHandler)
+    router := setupRouter(userHandler, authHandler)
 
 	// Iniciar servidor
 	log.Printf("Servidor rodando na porta %s", cfg.AppPort)
@@ -53,7 +63,8 @@ func main() {
 
 }
 
-func setupRouter(uh *handlers.UserHandler) *gin.Engine {
+
+func setupRouter(uh *useHandlers.UserHandler, ah *authHandlers.AuthHandler) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
@@ -63,10 +74,10 @@ func setupRouter(uh *handlers.UserHandler) *gin.Engine {
 	public := router.Group("/api/v1")
 	{
 		public.POST("/auth/signup", uh.Register)
-		public.POST("/auth/login", uh.Login)
+		public.POST("/auth/login", ah.Login)
 		// public.POST("/auth/refresh", uh.Refresh)
-		public.POST("/auth/forgot-password", uh.ForgotPassword)
-		public.POST("/auth/reset-password", uh.ResetPassword)
+		public.POST("/auth/forgot-password", ah.ForgotPassword)
+		public.POST("/auth/reset-password", ah.ResetPassword)
 		public.GET("/health", func(c *gin.Context) {
 			c.JSON(200, gin.H{"status": "ok"})
 		})

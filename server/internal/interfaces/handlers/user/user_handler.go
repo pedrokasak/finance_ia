@@ -8,10 +8,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// type UserHandler struct {
-// 	usecase *user.UseCase
-// }
-
 type UserHandler struct {
 	usecase user.IUserUseCase
 }
@@ -37,30 +33,6 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusCreated, user)
-}
- func (h *UserHandler) Login(c *gin.Context) {
-	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-		
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "user or password is invalid"})
-		return
-	}
-	
-	token, err := h.usecase.Login(req.Email, req.Password)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{
-		"email": req.Email,
-		"password":  req.Password,
-		"token": token,
-		"success": true,
-	},
-	)
 }
 
 func (h *UserHandler) GetAllUsers(c *gin.Context) {
@@ -136,40 +108,5 @@ func (h *UserHandler) DeleteUser(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully", "user": user})
-}
-
-func (h *UserHandler) ForgotPassword(c *gin.Context) {
-	var req struct {
-		Email string `json:"email"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data"})
-		return
-	}
-
-	if err := h.usecase.ForgotPassword(req.Email); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error processing request"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "if the email exists, a reset link has been sent"})
-}
-
-func (h *UserHandler) ResetPassword(c *gin.Context) {
-	var req struct {
-		Token       string `json:"token"`
-		NewPassword string `json:"new_password"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data"})
-		return
-	}
-
-	if err := h.usecase.ResetPassword(req.Token, req.NewPassword); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "error processing request"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "password has been reset successfully"})
 }
 
