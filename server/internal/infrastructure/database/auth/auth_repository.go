@@ -62,6 +62,7 @@ func (r *AuthRepository) RecoveryPassword(email string) error {
 		return err
 	}
 	// Aqui você pode gerar um token de reset e enviar por email
+	
 	_ = u // Apenas para evitar o warning de variável não utilizada
 	return nil
 }
