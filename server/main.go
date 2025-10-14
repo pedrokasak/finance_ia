@@ -6,8 +6,10 @@ import (
 	"finance-ia/internal/config"
 	"finance-ia/internal/config/database"
 	"finance-ia/internal/domain/auth"
+	"finance-ia/internal/domain/email"
 	"finance-ia/internal/domain/user"
 	infraauth "finance-ia/internal/infrastructure/database/auth"
+	emailRepository "finance-ia/internal/infrastructure/database/email"
 	infrauser "finance-ia/internal/infrastructure/database/user"
 	authHandlers "finance-ia/internal/interfaces/handlers/auth"
 	useHandlers "finance-ia/internal/interfaces/handlers/user"
@@ -28,6 +30,10 @@ func main() {
 	
 	// Conectar ao banco de dados
 	db, err := database.Connect(cfg.DatabaseURL)
+	
+	// Migrations
+	db.AutoMigrate(&emailRepository.PasswordResetToken{})
+
 	if err != nil {
 		log.Fatal("Falha ao conectar com o banco:", err)
 	}
@@ -39,10 +45,14 @@ func main() {
 		// Repositório do usuário
     userRepo := infrauser.NewUserRepository(db)
 		authRepo := infraauth.NewAuthRepository(db)
+		tokenRepo := emailRepository.NewTokenRepository(db)
+
+		// Inicializa serviço de email
+		emailService := email.NewSMTPService()
 		
     // Service do domínio
     userService := user.NewService(userRepo)
-		authService := auth.NewService(authRepo)
+		authService := auth.NewService(authRepo, tokenRepo, emailService)
 
 		// Use case da aplicação
 

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -32,6 +33,17 @@ func (r *AuthRepository) FindByEmail(email string) (*auth.Authentication, error)
     return nil, gorm.ErrRecordNotFound
 }
 
+func (r *AuthRepository) FindByID(id uuid.UUID) (*auth.Authentication, error) {
+	var authObj auth.Authentication
+	result := r.db.Where("id = ?", id).First(&authObj)
+	
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, errors.New("user not found")
+	}
+	
+	return &authObj, result.Error
+}
+
 func (r *AuthRepository) Login(email, password string) (string, error) {
 	var u auth.Authentication
 	if err := r.db.Where("email = ? AND password = ?", email, password).First(&u).Error; err != nil {
@@ -50,6 +62,7 @@ func (r *AuthRepository) RecoveryPassword(email string) error {
 		return err
 	}
 	// Aqui você pode gerar um token de reset e enviar por email
+	
 	_ = u // Apenas para evitar o warning de variável não utilizada
 	return nil
 }

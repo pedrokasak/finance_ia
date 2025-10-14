@@ -53,38 +53,51 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
-    var req struct {
-        Email string `json:"email" binding:"required,email"`
-    }
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid data"})
-        return
-    }
+	var req ForgotPasswordRequest
 
-    if err := h.usecase.ForgotPassword(req.Email); err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"message": "Error processing request"})
-        return
-    }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   err.Error(),
+			Message: "Dados inválidos",
+		})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"message": "If the email exists, a reset link has been sent to it."})
+	if err := h.usecase.ForgotPassword(req.Email); err != nil {
+		// Log o erro mas retorne mensagem genérica
+		c.JSON(http.StatusInternalServerError, ErrorResponse{
+			Message: "Erro ao processar solicitação",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, MessageResponse{
+		Message: "Se o email existir, você receberá um link de recuperação.",
+	})
 }
 
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
-    var req struct {
-        Token       string `json:"token" binding:"required"`
-        NewPassword string `json:"new_password" binding:"required,min=6"`
-    }
-    if err := c.ShouldBindJSON(&req); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "Invalid data"})
-        return
-    }
+	var req ResetPasswordRequest
 
-    if err := h.usecase.ResetPassword(req.Token, req.NewPassword); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid or expired token", "error": err.Error()})
-        return
-    }
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Error:   err.Error(),
+			Message: "Dados inválidos",
+		})
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{"message": "Password changed successfully"})
+	if err := h.usecase.ResetPassword(req.Token, req.NewPassword); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{
+			Message: err.Error(),
+			Error:   "Token inválido ou expirado",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, MessageResponse{
+		Message: "Senha redefinida com sucesso!",
+	})
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
@@ -101,4 +114,23 @@ func (h *AuthHandler) Logout(c *gin.Context) {
     }
 
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
+}
+
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
+type MessageResponse struct {
+	Message string `json:"message"`
+}
+
+type ErrorResponse struct {
+	Message string `json:"message"`
+	Error   string `json:"error,omitempty"`
 }
