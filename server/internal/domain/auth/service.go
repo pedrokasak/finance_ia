@@ -1,9 +1,14 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
+	emailDomain "finance-ia/internal/domain/email"
+	emailRepository "finance-ia/internal/infrastructure/database/email"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
@@ -11,13 +16,14 @@ import (
 )
 
 type Service struct {
-	repo     Repository
+	repo           Repository
+	emailTokenRepo *emailRepository.TokenRepository
+	emailService   emailDomain.Service
 }
 
-func NewService(r Repository) *Service {
-	return &Service{repo: r}
+func NewService(r Repository, et *emailRepository.TokenRepository, es emailDomain.Service) *Service {
+	return &Service{repo: r, emailTokenRepo: et, emailService: es}
 }
-
 
 func (s *Service) Login(email, password string) (string, error) {
 	if err := ValidateLoginFields(email, password); err != nil { return "", err }
@@ -42,31 +48,6 @@ func (s *Service) Login(email, password string) (string, error) {
 	return tokenString, nil
 }
 
-func (s *Service) ForgotPassword(email string) error {
-	if email == "" {
-		return errors.New("email is required")
-	}
-	user, err := s.repo.FindByEmail(email)
-	if err != nil {
-		return err
-	}
-
-	// Aqui você pode gerar um token de reset e enviar por email
-	_ = user // Apenas para evitar o warning de variável não utilizada
-	return nil
-}
-
-func (s *Service) ResetPassword(token, newPassword string) error {
-	if token == "" || newPassword == "" {
-		return errors.New("token and new password are required")
-	}
-	
-	// Aqui você deve validar o token e encontrar o usuário correspondente
-	// Para simplificação, vamos assumir que o token é válido e corresponde a um usuário
-	user := &Authentication{} // Substitua isso pela lógica real de obtenção do usuário pelo token
-	user.Password = newPassword
-	return s.repo.Update(user)
-}
 func (s *Service) GetByEmail(email string) (*Authentication, error) {
 	if email == "" {
 		return nil, errors.New("email is required")
@@ -141,4 +122,103 @@ func (s *Service) Logout(tokenString string) error {
     }
 
     return nil
+}
+
+func generateSecureToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
+
+func (s *Service) ForgotPassword(email string) error {
+	if email == "" {
+		return errors.New("email is required")
+	}
+
+	user, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return nil
+	}
+
+	// Gera token único
+	token, err := generateSecureToken()
+	if err != nil {
+		return fmt.Errorf("failed to generate token: %w", err)
+	}
+
+	// Cria registro do token (expira em 1 hora)
+	resetToken := &emailRepository.PasswordResetToken{
+		Token:     token,
+		UserID:    user.ID.String(),
+		ExpiresAt: time.Now().Add(1 * time.Hour),
+		Used:      false,
+	}
+
+	// Salva no banco
+	if err := s.emailTokenRepo.SaveResetToken(resetToken); err != nil {
+		return fmt.Errorf("failed to save token: %w", err)
+	}
+
+	// Envia email (em background idealmente)
+	if err := s.emailService.SendPasswordReset(email, token); err != nil {
+		fmt.Printf("Failed to send email to %s: %v\n", email, err)
+
+	}
+
+	return nil
+}
+
+func (s *Service) ResetPassword(token, newPassword string) error {
+	if token == "" || newPassword == "" {
+		return errors.New("token and new password are required")
+	}
+
+	// Valida comprimento da senha
+	if len(newPassword) < 6 {
+		return errors.New("password must be at least 6 characters")
+	}
+
+	// Busca o token
+	resetToken, err := s.emailTokenRepo.FindResetToken(token)
+	if err != nil {
+		return errors.New("invalid or expired token")
+	}
+
+	// Verifica se já foi usado
+	if resetToken.Used {
+		return errors.New("token already used")
+	}
+
+	// Verifica se expirou
+	if time.Now().After(resetToken.ExpiresAt) {
+		return errors.New("token expired")
+	}
+
+	userID, err := uuid.Parse(resetToken.UserID)
+	if err != nil {
+			return errors.New("invalid user ID in token")
+	}
+	s.repo.FindByID(userID)
+
+	// Busca o usuário
+	user, err := s.repo.FindByID(userID)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	// Atualiza a senha (será hasheada no repositório)
+	user.Password = newPassword
+	if err := s.repo.ResetPassword(user.Email, newPassword); err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	// Marca token como usado
+	resetToken.Used = true
+	if err := s.emailTokenRepo.UpdateResetToken(resetToken); err != nil {
+		return fmt.Errorf("failed to update token: %w", err)
+	}
+
+	return nil
 }

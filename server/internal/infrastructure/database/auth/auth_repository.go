@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +31,17 @@ func (r *AuthRepository) FindByEmail(email string) (*auth.Authentication, error)
         }, nil
     }
     return nil, gorm.ErrRecordNotFound
+}
+
+func (r *AuthRepository) FindByID(id uuid.UUID) (*auth.Authentication, error) {
+	var authObj auth.Authentication
+	result := r.db.Where("id = ?", id).First(&authObj)
+	
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return nil, errors.New("user not found")
+	}
+	
+	return &authObj, result.Error
 }
 
 func (r *AuthRepository) Login(email, password string) (string, error) {

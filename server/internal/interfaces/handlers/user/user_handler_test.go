@@ -175,7 +175,7 @@ func TestUpdateUser_Success(t *testing.T) {
 	userID := uuid.New()
 	req, _ := http.NewRequest("PATCH", "/user/update/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(context.WithValue(req.Context(), "id", jsonBody))
+	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)	
@@ -193,8 +193,8 @@ func TestDeleteUser_Success(t *testing.T) {
 		"id": uuid.New().String(),
 	}
 	jsonBody, _ := json.Marshal(body)
-
-	req, _ := http.NewRequest("DELETE", "/user/delete", bytes.NewBuffer(jsonBody))
+	userID := uuid.New()
+	req, _ := http.NewRequest("DELETE", "/user/delete/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
  req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
 	resp := httptest.NewRecorder()
