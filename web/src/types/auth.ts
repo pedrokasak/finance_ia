@@ -19,8 +19,13 @@ export type LoginRequest = {
 
 export type AuthenticationResponse = {
   email: string;
-  password: string;
   token?: string;
+  refreshToken?: string;
+  success: boolean;
+};
+
+export type AuthenticatorResponseError = {
+  message: string;
   success: boolean;
 };
 

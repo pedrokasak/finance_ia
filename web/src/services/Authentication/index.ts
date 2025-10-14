@@ -10,26 +10,29 @@ import {
 
 class AuthenticationService implements AuthenticationInterface {
   async login(data: LoginRequest): Promise<AuthenticationResponse> {
-    authentication
-      .login(data.email, data.password)
-      .then((response) => {
-        localStorage.setItem('authToken', response.token);
-        const data = {
-          email: response.email,
-          password: response.password,
-          token: response.token,
-          success: true,
-        };
-        return data;
-      })
-      .catch((error) => {
-        throw new Error(`Login failed: ${error.message}`);
-      });
-    return {
-      email: data.email,
-      password: data.password,
-      success: false,
-    };
+    try {
+      const response = await authentication.login(data.email, data.password);
+
+      localStorage.setItem('authToken', response.token);
+
+      if (response.refreshToken) {
+        localStorage.setItem('refreshToken', response.refreshToken);
+      }
+
+      return {
+        email: response.email,
+        token: response.token,
+        refreshToken: response.refreshToken,
+        success: true,
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error('Login failed:', error);
+      return {
+        email: data.email,
+        success: false,
+      };
+    }
   }
 
   async logout(): Promise<LogoutResponse> {

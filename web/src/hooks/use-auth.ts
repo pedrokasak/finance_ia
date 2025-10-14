@@ -90,7 +90,6 @@ const useAuth = () => {
             payload: response as AuthenticationResponse,
           });
         }
-        console.log('Login successful:', response);
         return response;
       } catch (err) {
         const message = handleError(err, 'Erro no login');
