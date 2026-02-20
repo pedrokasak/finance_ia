@@ -11,6 +11,7 @@ interface AuthenticationResponse {
 interface LoginRequest {
   email: string;
   password: string;
+  code?: string;
 }
 
 interface SignupRequest {
@@ -80,10 +81,10 @@ const useAuth = () => {
   );
 
   const login = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, code?: string) => {
       dispatch({ type: 'AUTH_START' });
       try {
-        const response = await authenticationService.login({ email, password });
+        const response = await authenticationService.login({ email, password, code });
         if (!isUnmountedRef.current) {
           dispatch({
             type: 'AUTH_SUCCESS',

@@ -19,7 +19,6 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		secretKey := os.Getenv("JWT_SECRET")
-
 		tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
 
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -34,6 +33,15 @@ func JWTAuth() gin.HandlerFunc {
 
 		claims := token.Claims.(jwt.MapClaims)
 		c.Set("user_id", claims["user_id"])
+		c.Set("email", claims["email"])
+
+		// Inject plan into context (used by AI and subscription handlers)
+		if plan, ok := claims["plan"].(string); ok && plan != "" {
+			c.Set("plan", plan)
+		} else {
+			c.Set("plan", "free")
+		}
+
 		c.Next()
 	}
 }

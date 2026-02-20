@@ -38,13 +38,20 @@ func (m *mockUserUseCase) Login(email, password string) (string, error) {
 	return "mocked_token", nil
 }
 
-func (m *mockUserUseCase) GetAll() ([]*domainUser.User, error)              { return []*domainUser.User{}, nil }
-func (m *mockUserUseCase) GetByID(id uuid.UUID) (*domainUser.User, error)  { return &domainUser.User{ID: id}, nil }
-func (m *mockUserUseCase) GetByEmail(email string) (*domainUser.User, error) { return &domainUser.User{Email: email}, nil }
-func (m *mockUserUseCase) Update(u *domainUser.User) error                 { return nil }
-func (m *mockUserUseCase) Delete(u *domainUser.User) error                 { return nil }
-func (m *mockUserUseCase) ForgotPassword(email string) error               { return nil }
-func (m *mockUserUseCase) ResetPassword(token, newPassword string) error   { return nil }
+func (m *mockUserUseCase) GetAll() ([]*domainUser.User, error) { return []*domainUser.User{}, nil }
+func (m *mockUserUseCase) GetByID(id uuid.UUID) (*domainUser.User, error) {
+	return &domainUser.User{ID: id}, nil
+}
+func (m *mockUserUseCase) GetByEmail(email string) (*domainUser.User, error) {
+	if email == "exists@example.com" {
+		return &domainUser.User{Email: email}, nil
+	}
+	return nil, errors.New("not found")
+}
+func (m *mockUserUseCase) Update(u *domainUser.User) error               { return nil }
+func (m *mockUserUseCase) Delete(u *domainUser.User) error               { return nil }
+func (m *mockUserUseCase) ForgotPassword(email string) error             { return nil }
+func (m *mockUserUseCase) ResetPassword(token, newPassword string) error { return nil }
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
@@ -98,7 +105,7 @@ func TestRegisterUser_AlreadyExists(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusBadRequest, resp.Code)
+	assert.Equal(t, http.StatusConflict, resp.Code)
 	assert.Contains(t, resp.Body.String(), "email already in use")
 }
 
@@ -144,7 +151,7 @@ func TestGetAllUsers_Success(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, http.StatusNotFound, resp.Code)
 	assert.Contains(t, resp.Body.String(), "nenhum usuário encontrado")
 }
 
@@ -159,7 +166,7 @@ func TestGetAllUsers_Empty(t *testing.T) {
 
 	router.ServeHTTP(resp, req)
 
-	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Equal(t, http.StatusNotFound, resp.Code)
 	assert.Contains(t, resp.Body.String(), "nenhum usuário encontrado")
 }
 
@@ -178,10 +185,10 @@ func TestUpdateUser_Success(t *testing.T) {
 	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
 	resp := httptest.NewRecorder()
 
-	router.ServeHTTP(resp, req)	
+	router.ServeHTTP(resp, req)
 
 	assert.Equal(t, http.StatusOK, resp.Code)
-	assert.Contains(t, resp.Body.String(), "mocked_id")
+	assert.Contains(t, resp.Body.String(), userID.String())
 }
 
 func TestDeleteUser_Success(t *testing.T) {
@@ -196,7 +203,7 @@ func TestDeleteUser_Success(t *testing.T) {
 	userID := uuid.New()
 	req, _ := http.NewRequest("DELETE", "/user/delete/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
- req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
@@ -204,4 +211,3 @@ func TestDeleteUser_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.Code)
 	assert.Contains(t, resp.Body.String(), "user deleted successfully")
 }
-

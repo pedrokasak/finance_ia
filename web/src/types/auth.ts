@@ -14,6 +14,7 @@ export type SignupResponse = {
 export type LoginRequest = {
   email: string;
   password: string;
+  code?: string;
   keepAlive?: boolean;
 };
 
@@ -21,6 +22,7 @@ export type AuthenticationResponse = {
   email: string;
   token?: string;
   refreshToken?: string;
+  error?: string;
   success: boolean;
 };
 

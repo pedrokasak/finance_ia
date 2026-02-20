@@ -25,9 +25,12 @@ export function LoginPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [show2FA, setShow2FA] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
+    code?: string;
     form?: string;
   }>({});
 
@@ -50,13 +53,18 @@ export function LoginPage({ onNavigate }: AuthProps) {
     }
 
     try {
-      const response = await login(email, password);
+      const response = await login(email, password, show2FA ? code : undefined);
 
       if (response.success) {
         toast.success('Login realizado com sucesso!');
         onNavigate('app');
       } else {
-        const message = 'Falha no login. Verifique suas credenciais';
+        if (response.error === '2fa_required') {
+          setShow2FA(true);
+          toast.info('Autenticação em duas etapas é necessária');
+          return;
+        }
+        const message = response.error || 'Falha no login. Verifique suas credenciais';
         setErrors({ form: message });
         toast.error(message);
       }
@@ -139,6 +147,32 @@ export function LoginPage({ onNavigate }: AuthProps) {
             Esqueceu a senha?
           </button>
         </div>
+
+        {/* 2FA Code */}
+        {show2FA && (
+          <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300">
+            <Label htmlFor="code" className="text-sm font-medium">
+              Código de Autenticação (2FA)
+            </Label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                id="code"
+                type="text"
+                maxLength={6}
+                placeholder="000000"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                disabled={loading}
+                className="pl-10 h-12 text-center tracking-widest text-lg border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                required={show2FA}
+              />
+            </div>
+            {errors.code && (
+              <p className="mt-1 text-sm text-red-600">{errors.code}</p>
+            )}
+          </div>
+        )}
 
         {/* Erro geral do formulário */}
         {errors.form && (

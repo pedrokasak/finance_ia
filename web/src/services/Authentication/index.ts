@@ -11,7 +11,7 @@ import {
 class AuthenticationService implements AuthenticationInterface {
   async login(data: LoginRequest): Promise<AuthenticationResponse> {
     try {
-      const response = await authentication.login(data.email, data.password);
+      const response = await authentication.login(data.email, data.password, data.code);
 
       localStorage.setItem('authToken', response.token);
 
@@ -30,6 +30,7 @@ class AuthenticationService implements AuthenticationInterface {
       console.error('Login failed:', error);
       return {
         email: data.email,
+        error: error?.error || 'Falha no login',
         success: false,
       };
     }

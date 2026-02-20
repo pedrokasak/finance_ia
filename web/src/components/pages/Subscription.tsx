@@ -1,99 +1,155 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { 
-  Check, 
-  Crown, 
-  Zap, 
+import {
+  Check,
+  Crown,
   Star,
+  TrendingUp,
   CreditCard,
   Calendar,
-  TrendingUp,
-  Shield,
   Download,
-  Bot,
-  BarChart3
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { api } from '@/api/client';
+import { toast } from 'sonner';
 
-const plans = [
-  {
-    id: 'basic',
-    name: 'Básico',
-    price: 0,
-    interval: 'mês',
-    description: 'Perfeito para começar',
-    icon: TrendingUp,
-    color: 'text-gray-600',
-    bgColor: 'bg-gray-100',
-    features: [
-      'Controle básico de receitas e despesas',
-      'Categorização manual',
-      'Gráficos simples',
-      'Até 100 transações/mês',
-      'Suporte por email'
-    ],
-    limitations: [
-      'Sem relatórios avançados',
-      'Sem exportação de dados',
-      'Sem insights de IA'
-    ]
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 29.90,
-    interval: 'mês',
-    description: 'Ideal para controle avançado',
-    icon: Crown,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    popular: true,
-    features: [
-      'Transações ilimitadas',
-      'Categorização automática',
-      'Gráficos avançados e interativos',
-      'Metas financeiras personalizadas',
-      'Relatórios detalhados',
-      'Exportação em Excel/PDF',
-      'Sincronização em nuvem',
-      'Suporte prioritário'
-    ],
-    limitations: []
-  },
-  {
-    id: 'premium',
-    name: 'Premium',
-    price: 49.90,
-    interval: 'mês',
-    description: 'Máximo controle financeiro',
-    icon: Star,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-    features: [
-      'Todos os recursos do Pro',
-      'Análise de IA personalizada',
-      'Projeções e previsões avançadas',
-      'Alertas inteligentes',
-      'Consultoria financeira automatizada',
-      'Dashboard executivo',
-      'API para integrações',
-      'Suporte 24/7 via chat'
-    ],
-    limitations: []
-  }
-];
+// Plan data comes from the backend (GET /subscription/plans)
+interface Plan {
+  id: string;        // same as slug: 'free' | 'pro' | 'premium'
+  slug: string;
+  name: string;
+  description: string;
+  price_monthly: number;
+  price_yearly: number;
+  features: string[];
+  limitations?: string[];
+  popular?: boolean;
+  is_active: boolean;
+}
 
-const currentPlan = 'pro';
+// Visual metadata per slug (icon/color cannot come from JSON)
+const planVisuals: Record<string, { icon: React.ElementType; color: string; bgColor: string; popular?: boolean }> = {
+  free: { icon: TrendingUp, color: 'text-gray-600', bgColor: 'bg-gray-100' },
+  pro: { icon: Crown, color: 'text-blue-600', bgColor: 'bg-blue-100', popular: true },
+  premium: { icon: Star, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+};
+
+
+interface SubscriptionInfo {
+  plan: string;
+  status: string;
+  current_period_end?: string;
+  cancel_at_period_end?: boolean;
+}
+
+interface Invoice {
+  id: string;
+  date: string;
+  amount: number;
+  status: string;
+  currency: string;
+  hosted_invoice_url?: string;
+}
 
 export function Subscription() {
   const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  const getDiscountedPrice = (price: number) => {
-    return billingInterval === 'yearly' ? price * 10 : price; // 2 meses grátis no anual
+  // Toast on return from Stripe Checkout
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success')) {
+      toast.success('Assinatura realizada com sucesso!', { duration: 5000 });
+      window.history.replaceState(null, '', '/?page=subscription');
+    } else if (params.get('canceled')) {
+      toast.info('Checkout cancelado. Nenhuma cobrança foi feita.');
+      window.history.replaceState(null, '', '/?page=subscription');
+    }
+  }, []);
+
+  const { data: subData, isLoading: loadingSub } = useQuery({
+    queryKey: ['subscription'],
+    queryFn: () => api.get('/subscription/').then(r => r.data),
+    staleTime: 1000 * 30, // 30s
+  });
+
+  const { data: plansData, isLoading: loadingPlans } = useQuery({
+    queryKey: ['subscription-plans'],
+    queryFn: () => api.get('/subscription/plans').then(r => r.data),
+    staleTime: 1000 * 60 * 5, // 5min — plans rarely change
+  });
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ['subscription-invoices'],
+    queryFn: () => api.get('/subscription/invoices').then(r => r.data),
+    staleTime: 1000 * 60, // 1min
+  });
+
+  const loadingData = loadingSub || loadingPlans;
+
+  const subInfo: SubscriptionInfo = {
+    plan: subData?.subscription?.plan || subData?.plan || 'free',
+    status: subData?.subscription?.status || subData?.status || 'active',
+    current_period_end: subData?.subscription?.current_period_end,
+    cancel_at_period_end: subData?.subscription?.cancel_at_period_end,
+  };
+
+  const invoices: Invoice[] = invoicesData?.invoices || invoicesData || [];
+
+  const plans: Plan[] = ((plansData?.plans || []) as any[]).map((p: any) => ({
+    id: p.slug,      // use slug as id so plan.id === currentPlan works
+    slug: p.slug,
+    name: p.name,
+    description: p.description,
+    price_monthly: p.price_monthly,
+    price_yearly: p.price_yearly,
+    features: p.features || [],
+    limitations: p.limitations || [],
+    popular: planVisuals[p.slug]?.popular ?? false,
+    is_active: p.is_active,
+  }));
+
+  const currentPlan = subInfo.plan || 'free';
+  const isPaidPlan = currentPlan !== 'free';
+
+
+  const handleSubscribe = async (planId: string) => {
+    // 'free' plan = no payment needed (downgrade handled via portal)
+    if (planId === 'free') {
+      if (isPaidPlan) {
+        handleManagePortal();
+      }
+      return;
+    }
+    setLoadingPlan(planId);
+    try {
+      const { data } = await api.post('/subscription/checkout', {
+        plan: planId,
+        billing_type: billingInterval,
+      });
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.error || 'Erro ao criar sessão de pagamento');
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
+  const handleManagePortal = async () => {
+    try {
+      const { data } = await api.post('/subscription/portal');
+      if (data.url) window.location.href = data.url;
+    } catch {
+      toast.error('Erro ao abrir portal de gerenciamento');
+    }
   };
 
   return (
@@ -104,7 +160,7 @@ export function Subscription() {
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           Desbloqueie todo o potencial do FinanceAI com nossos planos flexíveis
         </p>
-        
+
         {/* Toggle de cobrança */}
         <div className="flex items-center justify-center space-x-4">
           <Label htmlFor="billing-toggle" className={cn(
@@ -133,109 +189,125 @@ export function Subscription() {
       </div>
 
       {/* Cards dos Planos */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {plans.map((plan) => {
-          const Icon = plan.icon;
-          const isCurrentPlan = plan.id === currentPlan;
-          const discountedPrice = getDiscountedPrice(plan.price);
-          
-          return (
-            <Card 
-              key={plan.id} 
-              className={cn(
-                "relative transition-all duration-200 hover:shadow-lg",
-                plan.popular && "ring-2 ring-blue-500 shadow-lg scale-105",
-                isCurrentPlan && "bg-blue-50 dark:bg-blue-950 border-blue-200"
-              )}
-            >
-              {plan.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-blue-600 text-white px-3 py-1">
-                    Mais Popular
-                  </Badge>
-                </div>
-              )}
-              
-              {isCurrentPlan && (
-                <div className="absolute -top-3 right-4">
-                  <Badge className="bg-green-600 text-white px-3 py-1">
-                    Plano Atual
-                  </Badge>
-                </div>
-              )}
+      {loadingData ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {plans.map((plan) => {
+            const visuals = planVisuals[plan.slug] ?? { icon: TrendingUp, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+            const Icon = visuals.icon;
+            const isCurrentPlan = plan.id === currentPlan;  // plan.id === slug === currentPlan from API
+            const price = billingInterval === 'yearly' ? plan.price_yearly : plan.price_monthly;
 
-              <CardHeader className="text-center space-y-4">
-                <div className={cn("w-12 h-12 mx-auto rounded-full flex items-center justify-center", plan.bgColor)}>
-                  <Icon className={cn("h-6 w-6", plan.color)} />
-                </div>
-                
-                <div>
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                  <CardDescription>{plan.description}</CardDescription>
-                </div>
-                
-                <div className="space-y-1">
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-3xl font-bold">
-                      R$ {discountedPrice.toFixed(2).replace('.', ',')}
-                    </span>
-                    <span className="text-muted-foreground ml-1">
-                      /{billingInterval === 'yearly' ? 'ano' : 'mês'}
-                    </span>
-                  </div>
-                  {billingInterval === 'yearly' && plan.price > 0 && (
-                    <p className="text-sm text-muted-foreground">
-                      ou R$ {plan.price.toFixed(2).replace('.', ',')}/mês cobrado anualmente
-                    </p>
-                  )}
-                </div>
-              </CardHeader>
-
-              <CardContent className="space-y-6">
-                {/* Features */}
-                <div className="space-y-3">
-                  {plan.features.map((feature, index) => (
-                    <div key={index} className="flex items-start space-x-3">
-                      <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Limitations */}
-                {plan.limitations.length > 0 && (
-                  <div className="space-y-2 pt-4 border-t">
-                    <p className="text-sm font-medium text-muted-foreground">Limitações:</p>
-                    {plan.limitations.map((limitation, index) => (
-                      <div key={index} className="flex items-start space-x-3">
-                        <div className="w-4 h-4 mt-0.5 flex-shrink-0">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full mx-auto mt-1.5" />
-                        </div>
-                        <span className="text-sm text-muted-foreground">{limitation}</span>
-                      </div>
-                    ))}
+            return (
+              <Card
+                key={plan.id}
+                className={cn(
+                  "relative transition-all duration-200 hover:shadow-lg",
+                  visuals.popular && "ring-2 ring-blue-500 shadow-lg scale-105",
+                  isCurrentPlan && "bg-blue-50 dark:bg-blue-950 border-blue-200"
+                )}
+              >
+                {visuals.popular && (
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge className="bg-blue-600 text-white px-3 py-1">
+                      Mais Popular
+                    </Badge>
                   </div>
                 )}
 
-                {/* Action Button */}
-                <Button 
-                  className={cn(
-                    "w-full",
-                    isCurrentPlan && "opacity-50 cursor-not-allowed",
-                    plan.popular && "bg-blue-600 hover:bg-blue-700"
+                {isCurrentPlan && (
+                  <div className="absolute -top-3 right-4">
+                    <Badge className="bg-green-600 text-white px-3 py-1">
+                      Plano Atual
+                    </Badge>
+                  </div>
+                )}
+
+                <CardHeader className="text-center space-y-4">
+                  <div className={cn("w-12 h-12 mx-auto rounded-full flex items-center justify-center", visuals.bgColor)}>
+                    <Icon className={cn("h-6 w-6", visuals.color)} />
+                  </div>
+
+                  <div>
+                    <CardTitle className="text-xl">{plan.name}</CardTitle>
+                    <CardDescription>{plan.description}</CardDescription>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-baseline justify-center">
+                      <span className="text-3xl font-bold">
+                        R$ {price.toFixed(2).replace('.', ',')}
+                      </span>
+                      <span className="text-muted-foreground ml-1">
+                        /{billingInterval === 'yearly' ? 'ano' : 'mês'}
+                      </span>
+                    </div>
+                    {billingInterval === 'yearly' && plan.price_monthly > 0 && (
+                      <p className="text-sm text-muted-foreground">
+                        ou R$ {plan.price_monthly.toFixed(2).replace('.', ',')}/mês cobrado anualmente
+                      </p>
+                    )}
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-6">
+                  {/* Features */}
+                  <div className="space-y-3">
+                    {plan.features.map((feature: string, index: number) => (
+                      <div key={index} className="flex items-start space-x-3">
+                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Limitations */}
+                  {(plan.limitations ?? []).length > 0 && (
+                    <div className="space-y-2 pt-4 border-t">
+                      <p className="text-sm font-medium text-muted-foreground">Limitações:</p>
+                      {(plan.limitations ?? []).map((limitation: string, index: number) => (
+                        <div key={index} className="flex items-start space-x-3">
+                          <div className="w-4 h-4 mt-0.5 flex-shrink-0">
+                            <div className="w-1 h-1 bg-gray-400 rounded-full mx-auto mt-1.5" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">{limitation}</span>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  variant={plan.id === 'basic' ? 'outline' : 'default'}
-                  disabled={isCurrentPlan}
-                >
-                  {isCurrentPlan ? 'Plano Atual' : 
-                   plan.id === 'basic' ? 'Downgrade' : 
-                   currentPlan === 'basic' ? 'Upgrade' : 'Alterar Plano'}
-                </Button>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+
+                  {/* Action Button */}
+                  <Button
+                    className={cn(
+                      "w-full",
+                      isCurrentPlan && "opacity-50 cursor-not-allowed",
+                      visuals.popular && !isCurrentPlan && "bg-blue-600 hover:bg-blue-700"
+                    )}
+                    variant={plan.id === 'free' ? 'outline' : 'default'}
+                    disabled={isCurrentPlan || loadingPlan !== null}
+                    onClick={() => handleSubscribe(plan.id)}
+                  >
+                    {loadingPlan === plan.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : isCurrentPlan ? (
+                      '✓ Plano Atual'
+                    ) : plan.id === 'free' ? (
+                      isPaidPlan ? 'Cancelar Assinatura' : 'Plano Gratuito'
+                    ) : currentPlan === 'free' ? (
+                      'Fazer Upgrade'
+                    ) : (
+                      'Alterar Plano'
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Informações de Pagamento */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -246,26 +318,20 @@ export function Subscription() {
               <span>Método de Pagamento</span>
             </CardTitle>
             <CardDescription>
-              Gerencie suas formas de pagamento
+              Gerencie suas formas de pagamento via portal Stripe
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
-                  <CreditCard className="h-4 w-4 text-blue-600" />
-                </div>
-                <div>
-                  <p className="font-medium">•••• •••• •••• 1234</p>
-                  <p className="text-sm text-muted-foreground">Cartão principal</p>
-                </div>
-              </div>
-              <Badge>Ativo</Badge>
-            </div>
-            
-            <Button variant="outline" className="w-full">
-              Alterar Método de Pagamento
-            </Button>
+            {currentPlan !== 'free' ? (
+              <Button variant="outline" className="w-full" onClick={handleManagePortal}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Abrir Portal de Gerenciamento
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Faça upgrade para gerenciar métodos de pagamento.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -276,34 +342,44 @@ export function Subscription() {
               <span>Histórico de Cobranças</span>
             </CardTitle>
             <CardDescription>
-              Veja suas últimas faturas
+              Suas últimas faturas
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-3">
-              {[
-                { date: '15/01/2024', amount: 29.90, status: 'Pago' },
-                { date: '15/12/2023', amount: 29.90, status: 'Pago' },
-                { date: '15/11/2023', amount: 29.90, status: 'Pago' },
-              ].map((invoice, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{invoice.date}</p>
-                    <p className="text-sm text-muted-foreground">
-                      R$ {invoice.amount.toFixed(2).replace('.', ',')}
-                    </p>
+            {loadingData ? (
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : invoices.length > 0 ? (
+              <div className="space-y-3">
+                {invoices.map((invoice) => (
+                  <div key={invoice.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{invoice.date}</p>
+                      <p className="text-sm text-muted-foreground">
+                        R$ {invoice.amount.toFixed(2).replace('.', ',')}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Badge className={invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                        {invoice.status === 'paid' ? 'Pago' : invoice.status}
+                      </Badge>
+                      {invoice.hosted_invoice_url && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer">
+                            <Download className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className="bg-green-100 text-green-800">
-                      {invoice.status}
-                    </Badge>
-                    <Button variant="ghost" size="sm">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhuma cobrança encontrada.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

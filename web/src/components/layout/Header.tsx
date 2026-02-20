@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -13,6 +14,7 @@ import { Menu, Sun, Moon, Bell, Settings, LogOut, Crown } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import type { Page } from '@/App';
 import useAuth from '../../hooks/use-auth';
+import { useUser } from '@/contexts/UserContext';
 
 interface HeaderProps {
   currentPage: Page;
@@ -27,22 +29,35 @@ export function Header({
 }: HeaderProps) {
   const { theme, setTheme } = useTheme();
   const auth = useAuth();
+  const { profile, refreshProfile } = useUser();
+
+  useEffect(() => {
+    refreshProfile();
+  }, [refreshProfile]);
 
   const getPageTitle = () => {
     switch (currentPage) {
-      case 'dashboard':
-        return 'Dashboard';
-      case 'transactions':
-        return 'Transações';
-      case 'reports':
-        return 'Relatórios';
-      case 'profile':
-        return 'Perfil';
-      case 'subscription':
-        return 'Assinatura';
-      default:
-        return 'Dashboard';
+      case 'dashboard': return 'Dashboard';
+      case 'transactions': return 'Transações';
+      case 'reports': return 'Relatórios';
+      case 'profile': return 'Perfil';
+      case 'subscription': return 'Assinatura';
+      default: return 'Dashboard';
     }
+  };
+
+  const displayName = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+    || profile?.email?.split('@')[0]
+    || 'Usuário';
+
+  const initials = (profile?.first_name?.[0] || '') + (profile?.last_name?.[0] || '')
+    || displayName[0]?.toUpperCase()
+    || 'U';
+
+  const planLabel: Record<string, string> = {
+    free: 'Gratuito',
+    pro: 'Pro',
+    premium: 'Premium',
   };
 
   const onSubmit = () => {
@@ -91,26 +106,23 @@ export function Header({
                 variant="ghost"
                 className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage
-                    src="https://images.pexels.com/photos/3777943/pexels-photo-3777943.jpeg?auto=compress&cs=tinysrgb&w=400"
-                    alt="User"
-                  />
-                  <AvatarFallback>JD</AvatarFallback>
+                  {profile?.avatar_url ? (
+                    <AvatarImage src={profile.avatar_url} alt={displayName} />
+                  ) : null}
+                  <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">
-                    João da Silva
-                  </p>
+                  <p className="text-sm font-medium leading-none">{displayName}</p>
                   <p className="text-xs leading-none text-muted-foreground">
-                    joao@exemplo.com
+                    {profile?.email}
                   </p>
                   <Badge variant="secondary" className="w-fit mt-1">
                     <Crown className="h-3 w-3 mr-1" />
-                    Plano Pro
+                    {planLabel[profile?.plan || 'free'] || 'Gratuito'}
                   </Badge>
                 </div>
               </DropdownMenuLabel>

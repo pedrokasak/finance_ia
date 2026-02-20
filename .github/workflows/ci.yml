@@ -1,0 +1,125 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  GO_VERSION: "1.23"
+  NODE_VERSION: "20"
+
+jobs:
+  # ─── Backend Tests ─────────────────────────────────────────────────────────
+  backend-test:
+    name: Backend — Test & Coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Install dependencies
+        run: cd server && go mod download
+
+      - name: Run tests with coverage
+        run: |
+          cd server
+          go test ./... -race -coverprofile=coverage.out -covermode=atomic -timeout 60s
+
+      - name: Enforce ≥90% coverage
+        run: |
+          cd server
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+          echo "Total coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 90" | bc -l) )); then
+            echo "❌ Coverage ${COVERAGE}% is below the required 90%"
+            exit 1
+          fi
+          echo "✅ Coverage ${COVERAGE}% meets the 90% threshold"
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: server/coverage.out
+
+  # ─── Backend Lint ──────────────────────────────────────────────────────────
+  backend-lint:
+    name: Backend — Lint & Vet
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: go vet
+        run: cd server && go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          working-directory: server
+          args: --timeout 5m
+
+  # ─── Backend Build ─────────────────────────────────────────────────────────
+  backend-build:
+    name: Backend — Build
+    runs-on: ubuntu-latest
+    needs: [backend-test, backend-lint]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build binary
+        run: cd server && go build -o bin/server ./main.go
+
+      - name: Build Docker image
+        run: cd server && docker build -t finance-ia-server:${{ github.sha }} .
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend — TypeScript & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: cd web && npm ci
+
+      - name: TypeScript check
+        run: cd web && npx tsc --noEmit
+
+      - name: Build
+        run: cd web && npm run build
+
+  # ─── Secret Scanning ───────────────────────────────────────────────────────
+  secret-scan:
+    name: Security — Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

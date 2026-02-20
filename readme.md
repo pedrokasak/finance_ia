@@ -38,6 +38,25 @@ To run the project, execute the following commands:
   go run main.go
   ```
 
+# 1. Configure envs
+cp server/.env.example server/.env
+# edite server/.env com suas credenciais
+# 2. Suba a infraestrutura
+cd server && make docker-up
+# Serviços disponíveis:
+# App:       http://localhost:8080
+# Prometheus: http://localhost:9090
+# Grafana:   http://localhost:3001  (admin/grafana_password)
+# RabbitMQ:  http://localhost:15672 (finance_user/rabbitmq_password)
+# Mailhog:   http://localhost:8025
+# 3. Rodar testes unitários
+make coverage       # testa e mostra % de cobertura
+# 4. Testar rotas no Postman
+make postman-test   # via Newman CLI
+# 5. Rodar E2E
+cd web && npm run dev  # em outro terminal
+cd web && npx playwright test
+
 ## Dashboard Preview
 
 Below is a preview of the application's dashboard:

@@ -1,7 +1,10 @@
 package database
 
 import (
+	aiDomain "finance-ia/internal/domain/ai"
 	"finance-ia/internal/domain/auth"
+	"finance-ia/internal/domain/finance"
+	"finance-ia/internal/domain/subscription"
 	"finance-ia/internal/domain/user"
 	"log"
 
@@ -14,12 +17,10 @@ func Connect(databaseURL string) (*gorm.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return db, nil
 }
 
 func TestConnection(databaseURL string) bool {
-
 	db, err := Connect(databaseURL)
 	if err != nil {
 		log.Fatalf("Failed to connect to the database: %v", err)
@@ -43,9 +44,13 @@ func TestConnection(databaseURL string) bool {
 }
 
 func Migrate(db *gorm.DB) error {
-    return db.AutoMigrate(
-        &user.User{},
-				&auth.Authentication{},
-      
-    )
+	return db.AutoMigrate(
+		&user.User{},
+		&auth.Authentication{},
+		&finance.Transaction{},
+		&finance.Category{},
+		&finance.Budget{},
+		&subscription.Subscription{},
+		&aiDomain.AIInsight{},
+	)
 }

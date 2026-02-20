@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -25,8 +26,10 @@ func NewService(r Repository, et *emailRepository.TokenRepository, es emailDomai
 	return &Service{repo: r, emailTokenRepo: et, emailService: es}
 }
 
-func (s *Service) Login(email, password string) (string, error) {
-	if err := ValidateLoginFields(email, password); err != nil { return "", err }
+func (s *Service) Login(email, password, code string) (string, error) {
+	if err := ValidateLoginFields(email, password); err != nil {
+		return "", err
+	}
 	user, err := s.repo.FindByEmail(email)
 	var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
 
@@ -37,15 +40,86 @@ func (s *Service) Login(email, password string) (string, error) {
 		return "", errors.New("invalid credentials")
 	}
 
+	if user.TwoFAEnabled {
+		if code == "" {
+			return "", errors.New("2fa_required")
+		}
+		if !totp.Validate(code, user.TwoFASecret) {
+			return "", errors.New("invalid 2fa code")
+		}
+	}
+
+	// Default plan — updated via Stripe webhook when user upgrades
+	plan := "free"
+
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"email": user.Email,
+		"email":   user.Email,
 		"user_id": user.ID,
+		"plan":    plan,
+		"exp":     time.Now().Add(24 * time.Hour).Unix(),
 	})
 	tokenString, err := token.SignedString(jwtSecret)
 	if err != nil {
 		return "message: Nao foi possivel gerar o token", err
 	}
 	return tokenString, nil
+}
+
+func (s *Service) Setup2FA(email string) (string, string, error) {
+	user, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return "", "", errors.New("user not found")
+	}
+
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "FinZen",
+		AccountName: user.Email,
+	})
+	if err != nil {
+		return "", "", err
+	}
+
+	user.TwoFASecret = key.Secret()
+	// TwoFAEnabled stays false until verified
+	if err := s.repo.Update(user); err != nil {
+		return "", "", err
+	}
+
+	return key.Secret(), key.URL(), nil
+}
+
+func (s *Service) Verify2FA(email, code string) error {
+	user, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	if user.TwoFAEnabled {
+		return errors.New("2fa already enabled")
+	}
+
+	if user.TwoFASecret == "" {
+		return errors.New("2fa not set up")
+	}
+
+	valid := totp.Validate(code, user.TwoFASecret)
+	if !valid {
+		return errors.New("invalid 2fa code")
+	}
+
+	user.TwoFAEnabled = true
+	return s.repo.Update(user)
+}
+
+func (s *Service) Disable2FA(email string) error {
+	user, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return errors.New("user not found")
+	}
+
+	user.TwoFAEnabled = false
+	user.TwoFASecret = ""
+	return s.repo.Update(user)
 }
 
 func (s *Service) GetByEmail(email string) (*Authentication, error) {
@@ -83,45 +157,45 @@ func (s *Service) ValidateToken(tokenString string) (*jwt.Token, error) {
 }
 
 func (s *Service) Logout(tokenString string) error {
-    if tokenString == "" {
-        return errors.New("token is required")
-    }
+	if tokenString == "" {
+		return errors.New("token is required")
+	}
 
-    jwtSecret := []byte(os.Getenv("JWT_SECRET"))
-    parsed, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-        if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-            return nil, errors.New("unexpected signing method")
-        }
-        return jwtSecret, nil
-    })
-    if err != nil || !parsed.Valid {
-        return errors.New("invalid token")
-    }
+	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
+	parsed, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !parsed.Valid {
+		return errors.New("invalid token")
+	}
 
-    claims, ok := parsed.Claims.(jwt.MapClaims)
-    if !ok {
-        return errors.New("invalid token claims")
-    }
+	claims, ok := parsed.Claims.(jwt.MapClaims)
+	if !ok {
+		return errors.New("invalid token claims")
+	}
 
-    var email string
-    if e, ok := claims["email"].(string); ok && e != "" {
-        email = e
-    } else if uid, ok := claims["user_id"].(string); ok && uid != "" {
-        _ = uid
-    } else {
-        return errors.New("token does not contain email/user_id")
-    }
-    authObj, err := s.repo.FindByEmail(email)
-    if err != nil {
-        return err
-    }
-		// Invalidate the token (this is a simple approach; consider a token blacklist for production)
-    authObj.Token = ""
-    if err := s.repo.Update(authObj); err != nil {
-        return fmt.Errorf("failed to invalidate token: %w", err)
-    }
+	var email string
+	if e, ok := claims["email"].(string); ok && e != "" {
+		email = e
+	} else if uid, ok := claims["user_id"].(string); ok && uid != "" {
+		_ = uid
+	} else {
+		return errors.New("token does not contain email/user_id")
+	}
+	authObj, err := s.repo.FindByEmail(email)
+	if err != nil {
+		return err
+	}
+	// Invalidate the token (this is a simple approach; consider a token blacklist for production)
+	authObj.Token = ""
+	if err := s.repo.Update(authObj); err != nil {
+		return fmt.Errorf("failed to invalidate token: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 func generateSecureToken() (string, error) {
@@ -198,7 +272,7 @@ func (s *Service) ResetPassword(token, newPassword string) error {
 
 	userID, err := uuid.Parse(resetToken.UserID)
 	if err != nil {
-			return errors.New("invalid user ID in token")
+		return errors.New("invalid user ID in token")
 	}
 	s.repo.FindByID(userID)
 

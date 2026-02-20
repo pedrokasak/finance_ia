@@ -11,20 +11,26 @@ const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
 export const fetchApi = async (endpoint: string, options = {}) => {
   const response = await fetch(`${baseUrl}${endpoint}`, options);
-  if (!response.ok) {
-    throw new Error('Network response was not ok');
+  let data;
+  try {
+    data = await response.json();
+  } catch (e) {
+    data = {};
   }
-  return response.json();
+  if (!response.ok) {
+    throw data;
+  }
+  return data;
 };
 
 const authentication = {
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, code?: string) => {
     const response = await fetchApi(`auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, code }),
     });
 
     console.log('Login successful:', response);

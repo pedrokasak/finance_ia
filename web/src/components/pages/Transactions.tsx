@@ -1,333 +1,331 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { 
-  PlusCircle, 
-  Search, 
-  Filter,
-  TrendingUp,
-  TrendingDown,
-  Calendar,
-  Download
-} from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlusCircle, Search, TrendingUp, TrendingDown, Calendar, Loader2, Trash2, Pencil } from 'lucide-react';
+import { toast } from 'sonner';
+import financeService, { Transaction, Category } from '@/services/financeService';
 
-const transactions = [
-  {
-    id: 1,
-    type: 'receita',
-    description: 'Salário',
-    category: 'Trabalho',
-    amount: 5500,
-    date: '2024-01-15',
-    status: 'confirmado'
-  },
-  {
-    id: 2,
-    type: 'despesa',
-    description: 'Supermercado',
-    category: 'Alimentação',
-    amount: 350,
-    date: '2024-01-14',
-    status: 'confirmado'
-  },
-  {
-    id: 3,
-    type: 'despesa',
-    description: 'Combustível',
-    category: 'Transporte',
-    amount: 180,
-    date: '2024-01-13',
-    status: 'pendente'
-  },
-  {
-    id: 4,
-    type: 'receita',
-    description: 'Freelance',
-    category: 'Trabalho',
-    amount: 800,
-    date: '2024-01-12',
-    status: 'confirmado'
-  },
-  {
-    id: 5,
-    type: 'despesa',
-    description: 'Academia',
-    category: 'Saúde',
-    amount: 120,
-    date: '2024-01-11',
-    status: 'confirmado'
-  },
-];
+type TxType = 'income' | 'expense';
 
-const categories = {
-  receita: ['Trabalho', 'Investimentos', 'Freelance', 'Outros'],
-  despesa: ['Alimentação', 'Transporte', 'Saúde', 'Lazer', 'Casa', 'Educação', 'Outros']
-};
+interface FormState {
+  type: TxType;
+  description: string;
+  amount: string;
+  category_id: string;
+  date: string;
+}
+
+const emptyForm = (): FormState => ({
+  type: 'income',
+  description: '',
+  amount: '',
+  category_id: '',
+  date: new Date().toISOString().split('T')[0],
+});
 
 export function Transactions() {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [transactionType, setTransactionType] = useState<'receita' | 'despesa'>('receita');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>(emptyForm());
+  const [submitting, setSubmitting] = useState(false);
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalIncome, setTotalIncome] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredTransactions = transactions.filter(transaction =>
-    transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    transaction.category.toLowerCase().includes(searchTerm.toLowerCase())
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [txRes, catRes, dashRes] = await Promise.all([
+        financeService.listTransactions({ limit: 50 }),
+        financeService.getCategories(),
+        financeService.getDashboard(),
+      ]);
+      setTransactions(txRes.data || []);
+      setCategories(catRes || []);
+      setTotalIncome(dashRes.total_income || 0);
+      setTotalExpenses(dashRes.total_expenses || 0);
+    } catch {
+      toast.error('Erro ao carregar transações');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const filteredCategories = categories.filter(
+    (c) => c.type === (form.type === 'income' ? 'income' : 'expense')
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const filteredTransactions = transactions.filter((tx) =>
+    tx.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleOpenDialog = (type: TxType) => {
+    setEditingId(null);
+    setForm({ ...emptyForm(), type });
+    setDialogOpen(true);
+  };
+
+  const handleEdit = (tx: Transaction) => {
+    setEditingId(tx.id || null);
+    setForm({
+      type: tx.type,
+      description: tx.description,
+      amount: String(tx.amount),
+      category_id: tx.category_id || '',
+      date: tx.date.split('T')[0],
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Aqui você adicionaria a lógica para salvar a transação
-    setDialogOpen(false);
+    if (!form.amount || parseFloat(form.amount) <= 0) {
+      toast.error('Valor inválido');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const payload = {
+        type: form.type,
+        amount: parseFloat(form.amount),
+        description: form.description,
+        category_id: form.category_id || undefined,
+        date: form.date,
+      };
+
+      if (editingId) {
+        await financeService.updateTransaction(editingId, payload);
+        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} atualizada!`);
+      } else {
+        await financeService.createTransaction(payload as any);
+        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
+      }
+
+      setDialogOpen(false);
+      setEditingId(null);
+      setForm(emptyForm());
+      fetchData();
+    } catch {
+      toast.error(editingId ? 'Erro ao atualizar transação' : 'Erro ao salvar transação');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await financeService.deleteTransaction(id);
+      toast.success('Transação removida');
+      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+    } catch {
+      toast.error('Erro ao remover transação');
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header com estatísticas rápidas */}
+      {/* Summary cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total este Mês</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Receitas do Mês</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">R$ 6.300</div>
-            <p className="text-xs text-muted-foreground">
-              Receitas do mês atual
-            </p>
+            <div className="text-2xl font-bold text-green-600">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Gastos este Mês</CardTitle>
-            <TrendingDown className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Despesas do Mês</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">R$ 650</div>
-            <p className="text-xs text-muted-foreground">
-              Despesas do mês atual
-            </p>
+            <div className="text-2xl font-bold text-red-600">
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            </div>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transações</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total de Transações</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{transactions.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Total de registros
-            </p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Quick action buttons */}
+      <div className="flex gap-3">
+        <Button onClick={() => handleOpenDialog('expense')} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+          <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
+        </Button>
+      </div>
+
+      {/* Transaction list */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Transações</CardTitle>
-              <CardDescription>
-                Gerencie todas suas receitas e despesas
-              </CardDescription>
+              <CardDescription>Gerencie todas suas receitas e despesas</CardDescription>
             </div>
-            
-            <div className="flex space-x-2">
-              <Button variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </Button>
-              
-              <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Nova Transação
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Nova Transação</DialogTitle>
-                    <DialogDescription>
-                      Adicione uma nova receita ou despesa ao seu controle financeiro.
-                    </DialogDescription>
-                  </DialogHeader>
-                  
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <Tabs value={transactionType} onValueChange={(value) => setTransactionType(value as 'receita' | 'despesa')}>
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="receita" className="text-green-600">
-                          <TrendingUp className="h-4 w-4 mr-2" />
-                          Receita
-                        </TabsTrigger>
-                        <TabsTrigger value="despesa" className="text-red-600">
-                          <TrendingDown className="h-4 w-4 mr-2" />
-                          Despesa
-                        </TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="description">Descrição</Label>
-                      <Input 
-                        id="description" 
-                        placeholder="Ex: Salário, Supermercado..." 
-                        required 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="amount">Valor</Label>
-                      <Input 
-                        id="amount" 
-                        type="number" 
-                        placeholder="0,00" 
-                        step="0.01"
-                        required 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Categoria</Label>
-                      <Select required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione uma categoria" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories[transactionType].map((category) => (
-                            <SelectItem key={category} value={category}>
-                              {category}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="date">Data</Label>
-                      <Input 
-                        id="date" 
-                        type="date" 
-                        required 
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="notes">Observações (opcional)</Label>
-                      <Textarea 
-                        id="notes" 
-                        placeholder="Adicione detalhes sobre esta transação..."
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="flex justify-end space-x-2 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                        Cancelar
-                      </Button>
-                      <Button type="submit" className={transactionType === 'receita' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}>
-                        Salvar
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-        </CardHeader>
-        
-        <CardContent>
-          {/* Filtros */}
-          <div className="flex items-center space-x-2 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar transações..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtros
+            <Button onClick={() => handleOpenDialog('income')}>
+              <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
             </Button>
           </div>
+        </CardHeader>
+        <CardContent>
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar transações..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9"
+            />
+          </div>
 
-          {/* Tabela de Transações */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-medium">
-                    {transaction.description}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">
-                      {transaction.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {new Date(transaction.date).toLocaleDateString('pt-BR')}
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={transaction.status === 'confirmado' ? 'default' : 'outline'}
-                      className={transaction.status === 'confirmado' ? 'bg-green-100 text-green-800' : ''}
-                    >
-                      {transaction.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={transaction.type === 'receita' ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                      {transaction.type === 'receita' ? '+' : '-'} R$ {transaction.amount.toLocaleString('pt-BR')}
-                    </span>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : filteredTransactions.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>Nenhuma transação encontrada.</p>
+              <Button className="mt-4" onClick={() => handleOpenDialog('expense')}>
+                <PlusCircle className="h-4 w-4 mr-2" /> Adicionar primeira transação
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="w-20 text-right">Ações</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredTransactions.map((tx) => (
+                  <TableRow key={tx.id}>
+                    <TableCell className="font-medium">{tx.description || '—'}</TableCell>
+                    <TableCell>
+                      {tx.category ? (
+                        <Badge variant="secondary" style={{ borderColor: tx.category.color }}>
+                          {tx.category.name}
+                        </Badge>
+                      ) : '—'}
+                    </TableCell>
+                    <TableCell>{tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <span className={tx.type === 'income' ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                        {tx.type === 'income' ? '+' : '-'} R$ {tx.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(tx)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={() => tx.id && handleDelete(tx.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* New/Edit Transaction Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingId(null); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingId ? 'Editar' : 'Nova'} {form.type === 'income' ? 'Receita' : 'Despesa'}</DialogTitle>
+            <DialogDescription>{editingId ? 'Modifique os detalhes desta movimentação.' : 'Adicione uma nova movimentação ao seu controle financeiro.'}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <Tabs value={form.type} onValueChange={(v) => setForm({ ...form, type: v as TxType, category_id: '' })}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="income" className="text-green-600">
+                  <TrendingUp className="h-4 w-4 mr-2" /> Receita
+                </TabsTrigger>
+                <TabsTrigger value="expense" className="text-red-600">
+                  <TrendingDown className="h-4 w-4 mr-2" /> Despesa
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            <div className="space-y-2">
+              <Label>Descrição</Label>
+              <Input placeholder="Ex: Salário, Supermercado..." value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Valor (R$)</Label>
+              <Input type="number" placeholder="0,00" step="0.01" min="0.01" value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+            </div>
+
+            {filteredCategories.length > 0 && (
+              <div className="space-y-2">
+                <Label>Categoria</Label>
+                <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredCategories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Data</Label>
+              <Input type="date" value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submitting}
+                className={`flex-1 ${form.type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
