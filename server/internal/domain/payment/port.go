@@ -24,6 +24,15 @@ type PaymentGateway interface {
 	// CancelSubscription cancels a subscription
 	CancelSubscription(externalID string) error
 
+	// CreateProduct creates a product in the payment provider
+	CreateProduct(name, description string) (string, error)
+
+	// CreatePrice creates a recurring price for a product
+	CreatePrice(productID string, amount float64, currency string, interval string) (string, error)
+
+	// ArchiveProduct deactivates a product and its prices
+	ArchiveProduct(productID string) error
+
 	// ValidateWebhook validates the webhook payload and returns parsed events
 	ValidateWebhook(payload []byte, signature string) ([]*WebhookEvent, error)
 }
