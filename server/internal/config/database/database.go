@@ -51,6 +51,8 @@ func Migrate(db *gorm.DB) error {
 		&finance.Category{},
 		&finance.Budget{},
 		&subscription.Subscription{},
+		&subscription.Plan{},
+		&subscription.PlanFeature{},
 		&aiDomain.AIInsight{},
 	)
 }

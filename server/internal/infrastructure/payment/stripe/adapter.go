@@ -12,6 +12,8 @@ import (
 	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
 	"github.com/stripe/stripe-go/v76/customer"
 	"github.com/stripe/stripe-go/v76/invoice"
+	"github.com/stripe/stripe-go/v76/price"
+	"github.com/stripe/stripe-go/v76/product"
 	stripeSubscription "github.com/stripe/stripe-go/v76/subscription"
 	"github.com/stripe/stripe-go/v76/webhook"
 )
@@ -121,6 +123,45 @@ func (a *Adapter) CancelSubscription(externalID string) error {
 	_, err := stripeSubscription.Update(externalID, params)
 	if err != nil {
 		return fmt.Errorf("stripe: cancel subscription: %w", err)
+	}
+	return nil
+}
+
+func (a *Adapter) CreateProduct(name, description string) (string, error) {
+	params := &stripe.ProductParams{
+		Name:        stripe.String(name),
+		Description: stripe.String(description),
+	}
+	p, err := product.New(params)
+	if err != nil {
+		return "", fmt.Errorf("stripe: create product: %w", err)
+	}
+	return p.ID, nil
+}
+
+func (a *Adapter) CreatePrice(productID string, amount float64, currency string, interval string) (string, error) {
+	params := &stripe.PriceParams{
+		Product:    stripe.String(productID),
+		UnitAmount: stripe.Int64(int64(amount * 100)), // Stripe uses cents
+		Currency:   stripe.String(currency),
+		Recurring: &stripe.PriceRecurringParams{
+			Interval: stripe.String(interval), // "month" or "year"
+		},
+	}
+	p, err := price.New(params)
+	if err != nil {
+		return "", fmt.Errorf("stripe: create price: %w", err)
+	}
+	return p.ID, nil
+}
+
+func (a *Adapter) ArchiveProduct(productID string) error {
+	params := &stripe.ProductParams{
+		Active: stripe.Bool(false),
+	}
+	_, err := product.Update(productID, params)
+	if err != nil {
+		return fmt.Errorf("stripe: archive product: %w", err)
 	}
 	return nil
 }
