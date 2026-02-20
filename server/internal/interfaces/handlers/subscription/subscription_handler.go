@@ -92,7 +92,7 @@ func (h *SubscriptionHandler) GetMySubscription(c *gin.Context) {
 
 	// Fallback: read plan from users table (updated by webhooks)
 	plan := "free"
-	if u != nil && string(u.Plan) != "" && string(u.Plan) != "" {
+	if u != nil && string(u.Plan) != "" {
 		plan = string(u.Plan)
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -375,7 +375,7 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		sub, err := h.subscriptionRepo.FindByExternalID(event.SubscriptionID)
 		if err == nil {
 			sub.Status = subscription.StatusCanceled
-			h.subscriptionRepo.Upsert(sub)
+			_ = h.subscriptionRepo.Upsert(sub)
 		}
 		h.db.Model(&user.User{}).
 			Where("stripe_customer_id = ?", event.CustomerID).

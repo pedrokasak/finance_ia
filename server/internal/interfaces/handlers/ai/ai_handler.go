@@ -136,11 +136,3 @@ func getUserID(c *gin.Context) uuid.UUID {
 	id, _ := uuid.Parse(userIDstr.(string))
 	return id
 }
-
-func getPlan(c *gin.Context) string {
-	plan, _ := c.Get("plan")
-	if p, ok := plan.(string); ok && p != "" {
-		return p
-	}
-	return "free"
-}

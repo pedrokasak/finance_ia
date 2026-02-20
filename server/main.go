@@ -54,7 +54,7 @@ func main() {
 	userRepo := infrauser.NewUserRepository(db)
 	authRepo := infraauth.NewAuthRepository(db)
 	tokenRepo := infraEmailRepo.NewTokenRepository(db)
-	db.AutoMigrate(&infraEmailRepo.PasswordResetToken{}, &finance.FinancialMethod{})
+	_ = db.AutoMigrate(&infraEmailRepo.PasswordResetToken{}, &finance.FinancialMethod{})
 
 	emailService := email.NewSMTPService()
 	userService := user.NewService(userRepo)
@@ -129,6 +129,7 @@ func main() {
 
 	gateway := stripeAdapter.NewAdapter()
 	subscriptionHandler := subHandlers.NewSubscriptionHandler(gateway, subRepo, planRepo, userRepo, db)
+	planHandler := subHandlers.NewPlanHandler(gateway, planRepo)
 
 	// ────────────────────────────────────
 	// Subscription service (for future use cases)
@@ -143,6 +144,7 @@ func main() {
 		authHandler,
 		financeHandler,
 		subscriptionHandler,
+		planHandler,
 	}
 
 	if aiHandler != nil {
@@ -161,8 +163,8 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 	plans := []subDomain.Plan{
 		{
 			Slug:                 "free",
-			Name:                 "B\u00e1sico",
-			Description:          "Perfeito para come\u00e7ar",
+			Name:                 "Básico",
+			Description:          "Perfeito para começar",
 			PriceMonthly:         0,
 			PriceYearly:          0,
 			StripePriceIDMonthly: "",
@@ -171,11 +173,18 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 			AIInsights:           false,
 			ExportData:           false,
 			IsActive:             true,
+			Features: []subDomain.PlanFeature{
+				{Description: "Controle básico de receitas e despesas"},
+				{Description: "Categorização manual"},
+				{Description: "Gráficos simples"},
+				{Description: "Até 100 transações/mês"},
+				{Description: "Suporte por email"},
+			},
 		},
 		{
 			Slug:                 "pro",
 			Name:                 "Pro",
-			Description:          "Ideal para controle avan\u00e7ado",
+			Description:          "Ideal para controle avançado",
 			PriceMonthly:         29.90,
 			PriceYearly:          299.00,
 			StripePriceIDMonthly: getEnv("STRIPE_PRICE_PRO"),
@@ -184,11 +193,21 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 			AIInsights:           true,
 			ExportData:           true,
 			IsActive:             true,
+			Features: []subDomain.PlanFeature{
+				{Description: "Transações ilimitadas"},
+				{Description: "Categorização automática"},
+				{Description: "Gráficos avançados e interativos"},
+				{Description: "Metas financeiras personalizadas"},
+				{Description: "Relatórios detalhados"},
+				{Description: "Exportação em Excel/PDF"},
+				{Description: "Sincronização em nuvem"},
+				{Description: "Suporte prioritário"},
+			},
 		},
 		{
 			Slug:                 "premium",
 			Name:                 "Premium",
-			Description:          "M\u00e1ximo controle financeiro com IA",
+			Description:          "Máximo controle financeiro com IA",
 			PriceMonthly:         49.90,
 			PriceYearly:          499.00,
 			StripePriceIDMonthly: getEnv("STRIPE_PRICE_PREMIUM"),
@@ -197,11 +216,32 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 			AIInsights:           true,
 			ExportData:           true,
 			IsActive:             true,
+			Features: []subDomain.PlanFeature{
+				{Description: "Todos os recursos do Pro"},
+				{Description: "Análise de IA personalizada"},
+				{Description: "Projeções e previsões avançadas"},
+				{Description: "Alertas inteligentes"},
+				{Description: "Consultoria financeira automatizada"},
+				{Description: "Dashboard executivo"},
+				{Description: "API para integrações"},
+				{Description: "Suporte 24/7 via chat"},
+			},
 		},
 	}
 	for i := range plans {
-		if err := repo.Upsert(&plans[i]); err != nil {
-			return err
+		// Only seed if plan doesn't exist or we want to overwrite.
+		// For idempotency and dynamic features, we'll check if exists first.
+		existing, err := repo.FindBySlug(plans[i].Slug)
+		if err != nil || existing == nil {
+			if err := repo.Upsert(&plans[i]); err != nil {
+				return err
+			}
+		} else if len(existing.Features) == 0 {
+			// If plan exists but has no features, add default ones
+			existing.Features = plans[i].Features
+			if err := repo.Upsert(existing); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

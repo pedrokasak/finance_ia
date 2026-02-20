@@ -122,9 +122,9 @@ func (c *Client) Consume(queue string, handler func([]byte) error) error {
 		for d := range msgs {
 			if err := handler(d.Body); err != nil {
 				log.Printf("[queue] %s: handler error: %v — nacking", queue, err)
-				d.Nack(false, true) // requeue
+				_ = d.Nack(false, true) // requeue
 			} else {
-				d.Ack(false)
+				_ = d.Ack(false)
 			}
 		}
 	}()
