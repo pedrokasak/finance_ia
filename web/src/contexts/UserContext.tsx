@@ -43,8 +43,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const jwt = getJWTPayload();
         if (!jwt.user_id) return;
         try {
-            const res = await api.get(`/user/${jwt.user_id}`);
-            const u = (res as any).data?.user || (res as any).data;
+            const res = await api.get<{ user?: UserProfile } | UserProfile>(`/user/${jwt.user_id}`);
+            const data = res.data;
+            const u = ('user' in data ? data.user : data) as UserProfile;
             if (u) {
                 setProfile({
                     id: u.id || jwt.user_id,
@@ -74,6 +75,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useUser() {
     const ctx = useContext(UserContext);
     if (!ctx) throw new Error('useUser must be used inside UserProvider');

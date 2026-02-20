@@ -102,7 +102,7 @@ export function Subscription() {
 
   const invoices: Invoice[] = invoicesData?.invoices || invoicesData || [];
 
-  const plans: Plan[] = ((plansData?.plans || []) as any[]).map((p: any) => ({
+  const plans: Plan[] = (plansData?.plans || []).map((p: Plan) => ({
     id: p.slug,      // use slug as id so plan.id === currentPlan works
     slug: p.slug,
     name: p.name,
@@ -136,8 +136,9 @@ export function Subscription() {
       if (data.url) {
         window.location.href = data.url;
       }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Erro ao criar sessão de pagamento');
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || 'Erro ao criar sessão de pagamento');
     } finally {
       setLoadingPlan(null);
     }

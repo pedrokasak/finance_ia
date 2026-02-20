@@ -5,7 +5,8 @@ export interface Transaction {
     category_id?: string;
     type: 'income' | 'expense';
     amount: number;
-    description: string; tagline?: string;
+    description: string; 
+    tagline?: string;
     date: string;
     is_recurring?: boolean;
     idempotency_key?: string;
@@ -90,16 +91,16 @@ export interface TransactionListResponse {
 const financeService = {
     // Dashboard
     getDashboard: () =>
-        api.get<DashboardSummary>('/finance/dashboard').then((r: any) => r.data),
+        api.get<DashboardSummary>('/finance/dashboard').then((r) => r.data),
 
     // Transactions
     createTransaction: (tx: Transaction) =>
         api.post<Transaction>('/finance/transactions', tx, {
             headers: { 'Idempotency-Key': crypto.randomUUID() },
-        }).then((r: any) => r.data),
+        }).then((r) => r.data),
 
     updateTransaction: (id: string, tx: Partial<Transaction>) =>
-        api.put<Transaction>(`/finance/transactions/${id}`, tx).then((r: any) => r.data),
+        api.put<Transaction>(`/finance/transactions/${id}`, tx).then((r) => r.data),
 
     listTransactions: (filter: TransactionFilter = {}) => {
         const params = new URLSearchParams();
@@ -109,29 +110,29 @@ const financeService = {
         if (filter.start_date) params.set('start_date', filter.start_date);
         if (filter.end_date) params.set('end_date', filter.end_date);
         if (filter.category_id) params.set('category_id', filter.category_id);
-        return api.get<TransactionListResponse>(`/finance/transactions?${params}`).then((r: any) => r.data);
+        return api.get<TransactionListResponse>(`/finance/transactions?${params}`).then((r) => r.data);
     },
 
     deleteTransaction: (id: string) =>
-        api.delete(`/finance/transactions/${id}`).then((r: any) => r.data),
+        api.delete(`/finance/transactions/${id}`).then((r) => r.data),
 
     // Categories
     getCategories: () =>
-        api.get<Category[]>('/finance/categories').then((r: any) => r.data),
+        api.get<Category[]>('/finance/categories').then((r) => r.data),
 
     createCategory: (cat: Omit<Category, 'id' | 'is_default'>) =>
-        api.post<Category>('/finance/categories', cat).then((r: any) => r.data),
+        api.post<Category>('/finance/categories', cat).then((r) => r.data),
 
     // Financial Methods
     getMethods: () =>
-        api.get<FinancialMethod[]>('/finance/methods').then((r: any) => r.data),
+        api.get<FinancialMethod[]>('/finance/methods').then((r) => r.data),
 
     // Budget
     getBudget: () =>
-        api.get<Budget>('/finance/budget').then((r: any) => r.data),
+        api.get<Budget>('/finance/budget').then((r) => r.data),
 
     upsertBudget: (budget: Omit<Budget, 'id' | 'period' | 'needs_amount' | 'wants_amount' | 'savings_amount'>) =>
-        api.post<Budget>('/finance/budget', budget).then((r: any) => r.data),
+        api.post<Budget>('/finance/budget', budget).then((r) => r.data),
 };
 
 export default financeService;

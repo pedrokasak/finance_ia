@@ -18,13 +18,13 @@ export interface HealthScore {
 
 const aiService = {
     getInsight: () =>
-        api.get<AIInsight>('/ai/insight').then((r: any) => r.data),
+        api.get<AIInsight>('/ai/insight').then((r) => r.data),
 
     getFullAnalysis: () =>
-        api.get<{ insights: AIInsight[] }>('/ai/analysis').then((r: any) => r.data),
+        api.get<{ insights: AIInsight[] }>('/ai/analysis').then((r) => r.data),
 
     getHealthScore: () =>
-        api.get<HealthScore>('/ai/health-score').then((r: any) => r.data),
+        api.get<HealthScore>('/ai/health-score').then((r) => r.data),
 };
 
 export default aiService;

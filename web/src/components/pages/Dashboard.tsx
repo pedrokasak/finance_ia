@@ -181,7 +181,13 @@ export function Dashboard() {
     if (!txAmount || parseFloat(txAmount) <= 0) { toast.error('Valor inválido'); return; }
     setTxSaving(true);
     try {
-      await financeService.createTransaction({ type: txType, amount: parseFloat(txAmount), description: txDesc, date: txDate, category_id: txCatId || undefined } as any);
+      await financeService.createTransaction({ 
+        type: txType, 
+        amount: parseFloat(txAmount), 
+        description: txDesc, 
+        date: txDate, 
+        category_id: txCatId || undefined 
+      });
       toast.success(`${txType === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
       setTxDialogOpen(false);
       fetchDashboard();

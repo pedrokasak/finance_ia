@@ -110,7 +110,7 @@ export function Transactions() {
         await financeService.updateTransaction(editingId, payload);
         toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} atualizada!`);
       } else {
-        await financeService.createTransaction(payload as any);
+        await financeService.createTransaction(payload);
         toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
       }
 

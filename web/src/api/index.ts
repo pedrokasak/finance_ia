@@ -9,13 +9,14 @@ import {
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export const fetchApi = async (endpoint: string, options = {}) => {
+export const fetchApi = async <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const response = await fetch(`${baseUrl}${endpoint}`, options);
-  let data;
+  let data: T;
   try {
     data = await response.json();
-  } catch (e) {
-    data = {};
+  } catch (e: unknown) {
+    data = {} as T;
+    console.error(e);
   }
   if (!response.ok) {
     throw data;
@@ -33,12 +34,10 @@ const authentication = {
       body: JSON.stringify({ email, password, code }),
     });
 
-    console.log('Login successful:', response);
-
-    return response;
+    return response as unknown;
   },
   signup: async (data: SignupRequest) => {
-    return await fetchApi(`auth/signup/`, {
+    return await fetchApi<unknown>(`auth/signup/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -47,7 +46,7 @@ const authentication = {
     });
   },
   logout: async (): Promise<LogoutResponse> => {
-    return await fetchApi(`auth/logout/`, {
+    return await fetchApi<LogoutResponse>(`auth/logout/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +56,7 @@ const authentication = {
   forgotPassword: async (
     data: ForgotPasswordRequest,
   ): Promise<ForgotPasswordResponse> => {
-    return await fetchApi(`auth/forgot-password/`, {
+    return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,7 +67,7 @@ const authentication = {
   resetPassword: async (
     data: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> => {
-    return await fetchApi(`auth/reset-password/`, {
+    return await fetchApi<ResetPasswordResponse>(`auth/reset-password/`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

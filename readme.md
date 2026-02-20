@@ -33,6 +33,7 @@ To run the project, execute the following commands:
   ```
 
 - In the `server` folder:
+
   ```bash
   docker-compose up -d postgres
   go run main.go
@@ -47,7 +48,7 @@ To run the project, execute the following commands:
 
 - `cd server && make docker-up`
 
-## Serviços disponíveis:
+## Serviços disponíveis
 
 - `App:       http://localhost:8080`
 - `Prometheus: http://localhost:9090`

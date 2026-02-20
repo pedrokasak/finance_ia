@@ -1,9 +1,17 @@
-import React from 'react';
+
 import { cn } from '@/lib/utils';
+
+interface TooltipPayloadEntry {
+  value: number | string;
+  name: string;
+  dataKey: string;
+  color: string;
+  payload: Record<string, unknown>;
+}
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: any[];
+  payload?: TooltipPayloadEntry[];
   label?: string;
   className?: string;
 }
@@ -54,23 +62,26 @@ export function CustomTooltip({ active, payload, label, className }: CustomToolt
 export function PieTooltip({ active, payload }: CustomTooltipProps) {
   if (active && payload && payload.length) {
     const data = payload[0];
+    const value = typeof data.value === 'number' ? data.value : parseFloat(String(data.value));
+    const total = typeof data.payload.total === 'number' ? data.payload.total : parseFloat(String(data.payload.total));
+
     return (
       <div className="bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-lg p-4 min-w-[180px] ring-1 ring-black/5 dark:ring-white/10">
         <div className="flex items-center space-x-3">
           <div 
             className="w-4 h-4 rounded-full ring-2 ring-white/20"
-            style={{ backgroundColor: data.payload.color }}
+            style={{ backgroundColor: data.payload.color as string }}
           />
           <div className="flex-1">
             <p className="text-sm font-medium text-foreground">
-              {data.payload.name}
+              {data.payload.name as string}
             </p>
             <div className="flex items-center justify-between mt-1">
               <span className="text-sm font-semibold text-foreground">
-                R$ {data.value.toLocaleString('pt-BR')}
+                R$ {value.toLocaleString('pt-BR')}
               </span>
               <span className="text-xs text-muted-foreground ml-2">
-                {((data.value / data.payload.total) * 100).toFixed(1)}%
+                {total > 0 ? ((value / total) * 100).toFixed(1) : '0'}%
               </span>
             </div>
           </div>

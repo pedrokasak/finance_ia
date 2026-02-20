@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, Page } from '@playwright/test';
 
 // Helper: login and get to onboarding state
-async function loginAndGetToken(page: any) {
+async function loginAndGetToken(page: Page) {
     await page.goto('/');
     // Remove onboarding_completed to force onboarding flow
     await page.evaluate(() => {

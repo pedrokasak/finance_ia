@@ -87,8 +87,8 @@ export function Profile() {
     if (!jwt.user_id) return;
 
     // Fetch user details
-    api.get(`/user/${jwt.user_id}`).then((res: any) => {
-      const u = res.data?.user || res.data;
+    api.get(`/user/${jwt.user_id}`).then((res) => {
+      const u = (res.data)?.user || res.data;
       if (u) {
         setUser((prev) => ({ ...prev, ...u }));
         setFirstName(u.first_name || '');
@@ -104,10 +104,10 @@ export function Profile() {
     });
 
     // Fetch financial methods
-    api.get('/finance/methods').then((res: any) => {
-      setMethods(res.data?.data || res.data || []);
+    api.get('/finance/methods').then((res) => {
+      setMethods((res.data)?.data || res.data || []);
     }).catch(console.error);
-  }, []);
+  }, [jwt.user_id, jwt.email]);
 
   const handleSave = async () => {
     if (!jwt.user_id) return;
@@ -147,8 +147,9 @@ export function Profile() {
       const res = await api.post('/auth/2fa/setup');
       setSetup2FAData(res.data);
       setIs2FASetupOpen(true);
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Erro ao preparar ativação do 2FA', {
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Erro ao preparar ativação do 2FA', {
         style: {
           backgroundColor: '#7b0821ff',
           color: '#fff',
@@ -172,8 +173,9 @@ export function Profile() {
       setUser((prev) => ({ ...prev, two_fa_enabled: true }));
       setIs2FASetupOpen(false);
       setVerifyCode('');
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Código inválido', {
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Código inválido', {
         style: {
           backgroundColor: '#7b0821ff',
           color: '#fff',
@@ -190,8 +192,9 @@ export function Profile() {
       await api.post('/auth/2fa/disable');
       toast.success('2FA desativado com sucesso!');
       setUser((prev) => ({ ...prev, two_fa_enabled: false }));
-    } catch (e: any) {
-      toast.error(e.response?.data?.error || 'Erro ao desativar 2FA', {
+    } catch (e: unknown) {
+      const error = e as { response?: { data?: { error?: string } } };
+      toast.error(error.response?.data?.error || 'Erro ao desativar 2FA', {
         style: {
           backgroundColor: '#7b0821ff',
           color: '#fff',
