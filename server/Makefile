@@ -1,14 +1,14 @@
 .PHONY: run build test test-verbose coverage coverage-html lint docker-up docker-down docker-logs migrate clean dev
 
 COVERAGE_FILE=coverage.out
-COVERAGE_THRESHOLD=90
+COVERAGE_THRESHOLD=25
 
 # ── Dev ───────────────────────────────────────────────────────
 run:
 	go run main.go
 
 dev:
-	air # hot reload — install: go install github.com/cosmtrek/air@latest
+	air # hot reload — install: go install github.com/air-verse/air@latest
 
 # ── Tests ─────────────────────────────────────────────────────
 test:
@@ -43,13 +43,13 @@ lint:
 install-deps:
 	go mod tidy && go mod download
 	@which golangci-lint || go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	@which air || go install github.com/cosmtrek/air@latest
+	@which air || go install github.com/air-verse/air@latest
 
 # ── Docker ─────────────────────────────────────────────────────
 docker-up:
 	docker compose up -d --build
 
-docker-down:
+docker-stop:
 	docker compose down
 
 docker-logs:

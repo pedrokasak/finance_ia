@@ -8,6 +8,7 @@ import {
   Crown,
   TrendingUp,
   X,
+  Target,
 } from 'lucide-react';
 import type { Page } from '@/App';
 
@@ -33,6 +34,11 @@ const menuItems = [
     id: 'reports' as Page,
     label: 'Relatórios',
     icon: FileText,
+  },
+  {
+    id: 'goals' as Page,
+    label: 'Metas',
+    icon: Target,
   },
   {
     id: 'profile' as Page,

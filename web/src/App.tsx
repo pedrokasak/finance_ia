@@ -12,13 +12,15 @@ import { Reports } from '@/components/pages/Reports';
 import { AuthContainer } from '@/components/auth/AuthContainer';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { UserProvider } from '@/contexts/UserContext';
+import { Goals } from './components/pages/Goals';
 
 export type Page =
   | 'dashboard'
   | 'transactions'
   | 'reports'
   | 'profile'
-  | 'subscription';
+  | 'subscription'
+  | 'goals';
 
 const queryClient = new QueryClient();
 
@@ -30,7 +32,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
-    if (page && ['dashboard', 'transactions', 'reports', 'profile', 'subscription'].includes(page)) {
+    if (page && ['dashboard', 'transactions', 'reports', 'profile', 'subscription', 'goals'].includes(page)) {
       return page as Page;
     }
     return 'dashboard';
@@ -71,6 +73,8 @@ function App() {
         return <Profile />;
       case 'subscription':
         return <Subscription />;
+      case 'goals':
+        return <Goals />;
       default:
         return <Dashboard />;
     }

@@ -6,10 +6,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
     ChevronRight, ChevronLeft, Check, Info,
     Wallet, PieChart, Target, TrendingUp, Landmark, Layers, Coins, Percent, Flame,
-    Loader2
+    Loader2, Sun, Moon
 } from 'lucide-react';
 import { api } from '@/api/client';
 import financeService, { FinancialMethod } from '@/services/financeService';
+import { useTheme } from 'next-themes';
 
 interface OnboardingFlowProps {
     onComplete: () => void;
@@ -21,6 +22,7 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
 };
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+    const { theme, setTheme } = useTheme();
     const [step, setStep] = useState(1);
     const [methods, setMethods] = useState<FinancialMethod[]>([]);
     const [methodsLoading, setMethodsLoading] = useState(true);
@@ -29,7 +31,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const [monthlyIncome, setMonthlyIncome] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const totalSteps = 3;
+    const totalSteps = 4;
 
     useEffect(() => {
         financeService.getMethods()
@@ -132,7 +134,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             </p>
                         </div>
                         <div className="grid gap-3 text-left max-w-md mx-auto">
-                            {['Escolha seu método de planejamento', 'Defina sua renda mensal', 'Comece a registrar seus gastos'].map((item, i) => (
+                            {['Escolha seu tema preferido', 'Escolha seu método de planejamento', 'Defina sua renda mensal', 'Comece a registrar seus gastos'].map((item, i) => (
                                 <div key={i} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
                                     <div className="w-6 h-6 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
                                         <span className="text-xs text-primary-foreground font-bold">{i + 1}</span>
@@ -147,8 +149,50 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </div>
                 )}
 
-                {/* Step 2: Method Selection */}
+                {/* Step 2: Theme Selection */}
                 {step === 2 && (
+                    <div className="space-y-6 animate-in fade-in text-center">
+                        <div className="space-y-2">
+                            <h2 className="text-2xl font-bold">Como você prefere usar o FinanceIA?</h2>
+                            <p className="text-muted-foreground">Escolha o tema que mais agrada aos seus olhos.</p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 max-w-md mx-auto">
+                            <Card 
+                                className={`cursor-pointer border-2 transition-all hover:border-primary ${theme === 'light' ? 'border-primary ring-2 ring-primary/20' : 'border-transparent bg-muted/30'}`}
+                                onClick={() => setTheme('light')}
+                            >
+                                <CardContent className="p-6 flex flex-col items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                        <Sun className="h-8 w-8 text-amber-500" />
+                                    </div>
+                                    <span className="font-medium text-lg">Claro (Suave)</span>
+                                </CardContent>
+                            </Card>
+                            <Card 
+                                className={`cursor-pointer border-2 transition-all hover:border-primary ${theme === 'dark' ? 'border-primary ring-2 ring-primary/20' : 'border-transparent bg-muted/30'}`}
+                                onClick={() => setTheme('dark')}
+                            >
+                                <CardContent className="p-6 flex flex-col items-center gap-4">
+                                    <div className="w-16 h-16 rounded-full bg-slate-800 dark:bg-slate-900 flex items-center justify-center">
+                                        <Moon className="h-8 w-8 text-blue-400" />
+                                    </div>
+                                    <span className="font-medium text-lg">Escuro</span>
+                                </CardContent>
+                            </Card>
+                        </div>
+                        <div className="flex gap-3 max-w-md mx-auto mt-8">
+                            <Button variant="outline" onClick={() => setStep(1)} className="w-full">
+                                <ChevronLeft className="mr-2 h-4 w-4" /> Voltar
+                            </Button>
+                            <Button className="w-full" onClick={() => setStep(3)}>
+                                Continuar <ChevronRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Step 3: Method Selection */}
+                {step === 3 && (
                     <div className="space-y-6 animate-in fade-in">
                         <div>
                             <h2 className="text-2xl font-bold">Escolha seu método financeiro</h2>
@@ -212,18 +256,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             </div>
                         )}
                         <div className="flex gap-3">
-                            <Button variant="outline" onClick={() => setStep(1)}>
+                            <Button variant="outline" onClick={() => setStep(2)}>
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Voltar
                             </Button>
-                            <Button className="flex-1" disabled={!selectedMethod} onClick={() => setStep(3)}>
+                            <Button className="flex-1" disabled={!selectedMethod} onClick={() => setStep(4)}>
                                 Continuar <ChevronRight className="ml-2 h-4 w-4" />
                             </Button>
                         </div>
                     </div>
                 )}
 
-                {/* Step 3: Income */}
-                {step === 3 && selectedMethod && (
+                {/* Step 4: Income */}
+                {step === 4 && selectedMethod && (
                     <div className="space-y-6 animate-in fade-in">
                         <div>
                             <h2 className="text-2xl font-bold">Qual é sua renda mensal?</h2>
@@ -266,7 +310,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             )}
                         </div>
                         <div className="flex gap-3">
-                            <Button variant="outline" onClick={() => setStep(2)}>
+                            <Button variant="outline" onClick={() => setStep(3)}>
                                 <ChevronLeft className="mr-2 h-4 w-4" /> Voltar
                             </Button>
                             <Button

@@ -177,3 +177,118 @@ func TestResetPassword_InvalidRequestBody(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, resp.Code)
 	assert.Contains(t, resp.Body.String(), "Dados inválidos")
 }
+
+func setupProtectedRouter(handler *handlersAuth.AuthHandler, email string) *gin.Engine {
+	gin.SetMode(gin.TestMode)
+	r := gin.Default()
+	r.Use(func(c *gin.Context) {
+		if email != "" {
+			c.Set("email", email)
+		}
+		c.Next()
+	})
+	r.POST("/auth/logout", handler.Logout)
+	r.POST("/auth/2fa/setup", handler.Setup2FA)
+	r.POST("/auth/2fa/verify", handler.Verify2FA)
+	r.POST("/auth/2fa/disable", handler.Disable2FA)
+	return r
+}
+
+func TestLogout_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "")
+
+	req, _ := http.NewRequest("POST", "/auth/logout", nil)
+	req.Header.Set("Authorization", "Bearer valid_token")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+}
+
+func TestLogout_NoHeader(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "")
+
+	req, _ := http.NewRequest("POST", "/auth/logout", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+func TestSetup2FA_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "pedro@example.com")
+
+	req, _ := http.NewRequest("POST", "/auth/2fa/setup", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+	assert.Contains(t, resp.Body.String(), "mock_secret")
+}
+
+func TestVerify2FA_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "pedro@example.com")
+
+	body := map[string]string{"code": "123456"}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest("POST", "/auth/2fa/verify", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+}
+
+func TestVerify2FA_InvalidCode(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "pedro@example.com")
+
+	body := map[string]string{"code": "invalid"}
+	jsonBody, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest("POST", "/auth/2fa/verify", bytes.NewBuffer(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusBadRequest, resp.Code)
+}
+
+func TestDisable2FA_Success(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "pedro@example.com")
+
+	req, _ := http.NewRequest("POST", "/auth/2fa/disable", nil)
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusOK, resp.Code)
+}
+
+func TestProtectedRoutes_Unauthorized(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlersAuth.NewAuthHandler(usecase)
+	router := setupProtectedRouter(handler, "") // No email in context
+
+	req1, _ := http.NewRequest("POST", "/auth/2fa/setup", nil)
+	resp1 := httptest.NewRecorder()
+	router.ServeHTTP(resp1, req1)
+	assert.Equal(t, http.StatusUnauthorized, resp1.Code)
+}
