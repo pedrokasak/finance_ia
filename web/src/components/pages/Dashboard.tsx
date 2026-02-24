@@ -25,6 +25,9 @@ import {
   Flame,
   Loader2,
   AlertTriangle,
+  FolderOpen,
+  Edit2,
+  Trash2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -170,7 +173,15 @@ export function Dashboard() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [txSaving, setTxSaving] = useState(false);
 
-  const openTxDialog = (type: 'income' | 'expense') => {
+  // Category management modal state
+  const [catDialogOpen, setCatDialogOpen] = useState(false);
+  const [catSaving, setCatSaving] = useState(false);
+  const [catEditId, setCatEditId] = useState<string | null>(null);
+  const [catName, setCatName] = useState('');
+  const [catType, setCatType] = useState<'income' | 'expense'>('expense');
+  const [catColor, setCatColor] = useState('#EF4444');
+
+  const openTxDialog = (type: 'income' | 'expense' = 'expense') => {
     setTxType(type); setTxDesc(''); setTxAmount(''); setTxCatId('');
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxDialogOpen(true);
@@ -196,14 +207,45 @@ export function Dashboard() {
 
   const fetchDashboard = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      financeService.getDashboard(),
-      financeService.getCategories(),
-    ]).then(([dash, cats]) => {
-      setSummary(dash);
-      setCategories(cats || []);
-    }).catch(console.error).finally(() => setLoading(false));
+    fetchCategories();
+    financeService.getDashboard()
+      .then(setSummary)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
+
+  const fetchCategories = useCallback(() => {
+    financeService.getCategories().then(cats => setCategories(cats || [])).catch(console.error);
+  }, []);
+
+  const handleCatSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!catName) return;
+    setCatSaving(true);
+    try {
+      if (catEditId) {
+        await financeService.updateCategory(catEditId, { name: catName, type: catType, color: catColor, icon: 'plus' });
+        toast.success('Categoria atualizada!');
+      } else {
+        await financeService.createCategory({ name: catName, type: catType, color: catColor, icon: 'plus' });
+        toast.success('Categoria criada!');
+      }
+      setCatEditId(null);
+      setCatName('');
+      fetchCategories();
+    } catch { toast.error('Erro ao salvar categoria'); } finally { setCatSaving(false); }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm('Deseja realmente apagar esta categoria? Transações atreladas ficarão sem categoria.')) return;
+    try {
+      await financeService.deleteCategory(id);
+      toast.success('Categoria removida');
+      fetchCategories();
+    } catch {
+      toast.error('Erro ao remover (pode ser padrão ou haver problemas de rede)');
+    }
+  };
 
   useEffect(() => {
     fetchDashboard();
@@ -280,10 +322,85 @@ export function Dashboard() {
         </DialogContent>
       </Dialog>
 
+      {/* Category Management Dialog */}
+      <Dialog open={catDialogOpen} onOpenChange={setCatDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Categorias</DialogTitle>
+            <DialogDescription>Crie ou edite as suas categorias financeiras.</DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleCatSubmit} className="space-y-4 pt-2 border-b pb-6">
+             <div className="flex items-center gap-2">
+               <h4 className="text-sm font-medium">{catEditId ? 'Editar Categoria' : 'Nova Categoria'}</h4>
+               {catEditId && (
+                 <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setCatEditId(null); setCatName(''); }}>
+                   Cancelar Edição
+                 </Button>
+               )}
+             </div>
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 col-span-2">
+                  <Label>Nome</Label>
+                  <Input placeholder="Ex: Assinaturas" value={catName} onChange={(e) => setCatName(e.target.value)} required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={catType} onValueChange={(v: 'income'|'expense') => setCatType(v)} disabled={!!catEditId}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="expense">Despesa</SelectItem>
+                      <SelectItem value="income">Receita</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Cor</Label>
+                  <div className="flex gap-2">
+                    <Input type="color" value={catColor} onChange={(e) => setCatColor(e.target.value)} className="w-12 h-10 p-1" />
+                    <Input value={catColor} onChange={(e) => setCatColor(e.target.value)} placeholder="#000000" className="flex-1" />
+                  </div>
+                </div>
+             </div>
+             <Button type="submit" disabled={catSaving} className="w-full">
+                {catSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : catEditId ? 'Salvar Alterações' : 'Criar Categoria'}
+             </Button>
+          </form>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium mt-2">Suas Categorias</h4>
+            {categories.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma categoria encontrada.</p>}
+            {categories.map((c) => (
+              <div key={c.id} className="flex flex-row items-center justify-between p-2 rounded-md border text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
+                  <span>{c.name}</span>
+                  <Badge variant="outline" className="text-[10px] ml-1">{c.type === 'income' ? 'Receita' : 'Despesa'}</Badge>
+                  {c.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
+                </div>
+                {!c.is_default && (
+                  <div className="flex items-center">
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => { setCatEditId(c.id); setCatName(c.name); setCatType(c.type); setCatColor(c.color); }}>
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDeleteCategory(c.id)}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Quick action buttons */}
-      <div className="flex gap-3">
-        <Button onClick={() => openTxDialog('expense')} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => openTxDialog()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
+        </Button>
+        <Button onClick={() => setCatDialogOpen(true)} variant="outline" className="font-medium">
+          <FolderOpen className="h-4 w-4 mr-2 text-primary" /> Gerenciar Categorias
         </Button>
       </div>
 
@@ -532,17 +649,17 @@ export function Dashboard() {
             <CardDescription>Registre suas movimentações</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full justify-start bg-green-600 hover:bg-green-700">
+            <Button onClick={() => openTxDialog()} className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground">
               <PlusCircle className="h-4 w-4 mr-2" />
-              Adicionar Receita
+              Nova Transação
             </Button>
-            <Button variant="outline" className="w-full justify-start border-red-200 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20">
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Adicionar Despesa
+            <Button onClick={() => setCatDialogOpen(true)} variant="secondary" className="w-full justify-start">
+              <FolderOpen className="h-4 w-4 mr-2 text-primary" />
+              Gerenciar Categorias
             </Button>
             <Button variant="secondary" className="w-full justify-start" onClick={fetchDashboard}>
               <TrendingUp className="h-4 w-4 mr-2" />
-              Atualizar Dashboard
+              Atualizar Visão
             </Button>
           </CardContent>
         </Card>

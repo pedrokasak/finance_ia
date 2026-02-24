@@ -22,7 +22,7 @@ func NewPlanHandler(gateway payment.PaymentGateway, planRepo *dbsub.PlanReposito
 	}
 }
 
-func (h *PlanHandler) RegisterRoutes(protected gin.IRouter) {
+func (h *PlanHandler) RegisterRoutes(public gin.IRouter, protected gin.IRouter) {
 	plans := protected.Group("/admin/plans")
 	{
 		plans.POST("/", h.CreatePlan)
@@ -82,6 +82,7 @@ func (h *PlanHandler) CreatePlan(c *gin.Context) {
 		Description:          req.Description,
 		PriceMonthly:         req.PriceMonthly,
 		PriceYearly:          req.PriceYearly,
+		StripeProductID:      stripeProductID,
 		StripePriceIDMonthly: stripePriceMonthly,
 		StripePriceIDYearly:  stripePriceYearly,
 		Features:             features,
@@ -138,6 +139,27 @@ func (h *PlanHandler) UpdatePlan(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "plan not found"})
 		return
+	}
+
+	// If prices have changed, we need to create new Prices in Stripe
+	if req.PriceMonthly != plan.PriceMonthly {
+		if req.PriceMonthly > 0 {
+			newPriceID, err := h.gateway.CreatePrice(plan.StripeProductID, req.PriceMonthly, "brl", "month")
+			if err == nil {
+				plan.StripePriceIDMonthly = newPriceID
+			}
+		}
+		plan.PriceMonthly = req.PriceMonthly
+	}
+
+	if req.PriceYearly != plan.PriceYearly {
+		if req.PriceYearly > 0 {
+			newPriceID, err := h.gateway.CreatePrice(plan.StripeProductID, req.PriceYearly, "brl", "year")
+			if err == nil {
+				plan.StripePriceIDYearly = newPriceID
+			}
+		}
+		plan.PriceYearly = req.PriceYearly
 	}
 
 	plan.Slug = req.Slug
@@ -211,4 +233,3 @@ func (h *PlanHandler) RemoveFeature(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "feature removed"})
 }
-

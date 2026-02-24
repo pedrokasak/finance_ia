@@ -75,7 +75,6 @@ type SubscriptionInfo struct {
 	ExternalID  string
 	CustomerID  string
 	PriceID     string
-	Plan        string
 	Status      string
 	PeriodStart int64
 	PeriodEnd   int64
@@ -98,7 +97,7 @@ type WebhookEvent struct {
 	SubscriptionID string
 	CustomerID     string
 	UserID         string // from metadata
-	Plan           string
+	PriceID        string
 	Status         string
 	Metadata       map[string]string
 }

@@ -115,6 +115,38 @@ func (s *Service) CreateCategory(cat *Category) error {
 	return s.categoryRepo.Create(cat)
 }
 
+func (s *Service) UpdateCategory(id uuid.UUID, userID uuid.UUID, payload *Category) (*Category, error) {
+	existing, err := s.categoryRepo.FindByID(id)
+	if err != nil || existing == nil {
+		return nil, errors.New("category not found")
+	}
+	if existing.IsDefault {
+		return nil, errors.New("cannot update default categories")
+	}
+	if existing.UserID == nil || *existing.UserID != userID {
+		return nil, errors.New("unauthorized to update this category")
+	}
+
+	if payload.Name != "" {
+		existing.Name = payload.Name
+	}
+	if payload.Color != "" {
+		existing.Color = payload.Color
+	}
+	if payload.Icon != "" {
+		existing.Icon = payload.Icon
+	}
+
+	if err := s.categoryRepo.Update(existing); err != nil {
+		return nil, err
+	}
+	return existing, nil
+}
+
+func (s *Service) DeleteCategory(id uuid.UUID, userID uuid.UUID) error {
+	return s.categoryRepo.Delete(id, userID)
+}
+
 // --- Budget ---
 
 func (s *Service) GetFinancialMethods() ([]*FinancialMethod, error) {
@@ -155,7 +187,13 @@ func (s *Service) GetDashboardSummary(userID uuid.UUID) (*DashboardSummary, erro
 		return nil, fmt.Errorf("failed to fetch transactions: %w", err)
 	}
 
+	// Budget
+	budget, _ := s.GetCurrentBudget(userID)
+
 	var totalIncome, totalExpenses float64
+	if budget != nil {
+		totalIncome += budget.TotalIncome
+	}
 	categoryTotals := make(map[uuid.UUID]*CategorySummary)
 
 	for _, tx := range transactions {
@@ -215,9 +253,6 @@ func (s *Service) GetDashboardSummary(userID uuid.UUID) (*DashboardSummary, erro
 	// Monthly trend (last 6 months)
 	trend, _ := s.buildMonthlyTrend(userID, 6)
 
-	// Budget
-	budget, _ := s.GetCurrentBudget(userID)
-
 	return &DashboardSummary{
 		TotalIncome:       totalIncome,
 		TotalExpenses:     totalExpenses,
@@ -247,6 +282,17 @@ func (s *Service) buildMonthlyTrend(userID uuid.UUID, months int) ([]MonthlyTren
 		}
 
 		var income, expenses float64
+
+		// Consider base budget if available for this specific month (defaulting to current if unversioned)
+		periodStr := start.Format("2006-01")
+		budget, _ := s.budgetRepo.FindByUserAndPeriod(userID, periodStr)
+		if budget == nil {
+			budget, _ = s.GetCurrentBudget(userID) // fallback to current if history isn't strict
+		}
+		if budget != nil {
+			income += budget.TotalIncome
+		}
+
 		for _, tx := range txs {
 			if tx.Type == TransactionTypeIncome {
 				income += tx.Amount
@@ -264,31 +310,31 @@ func (s *Service) buildMonthlyTrend(userID uuid.UUID, months int) ([]MonthlyTren
 }
 
 func calculateHealthScore(savingsRate, balance, income float64) int {
-	score := 500 // baseline
+	score := 0 // baseline
 
-	// Savings rate contribution (max +300)
+	// Savings rate contribution (max +500)
 	switch {
 	case savingsRate >= 30:
-		score += 300
+		score += 500
 	case savingsRate >= 20:
-		score += 200
+		score += 350
 	case savingsRate >= 10:
-		score += 100
+		score += 200
 	case savingsRate >= 0:
-		score += 0
+		score += 50
 	default: // negative
-		score -= 200
+		score += 0
 	}
 
-	// Balance contribution (max +200)
+	// Balance contribution (max +500)
 	if income > 0 {
 		balanceRatio := balance / income
 		if balanceRatio >= 0.5 {
-			score += 200
+			score += 500
 		} else if balanceRatio >= 0.2 {
-			score += 100
+			score += 250
 		} else if balanceRatio < 0 {
-			score -= 150
+			score += 0
 		}
 	}
 

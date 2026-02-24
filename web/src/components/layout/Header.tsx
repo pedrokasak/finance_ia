@@ -42,6 +42,7 @@ export function Header({
       case 'reports': return 'Relatórios';
       case 'profile': return 'Perfil';
       case 'subscription': return 'Assinatura';
+      case 'goals': return 'Metas Financeiras';
       default: return 'Dashboard';
     }
   };
