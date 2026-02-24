@@ -3,6 +3,7 @@ package ai
 import (
 	"finance-ia/internal/domain/ai"
 	"finance-ia/internal/domain/finance"
+	"finance-ia/internal/domain/user"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -12,10 +13,11 @@ import (
 type AIHandler struct {
 	aiService      *ai.Service
 	financeService *finance.Service
+	userService    *user.Service
 }
 
-func NewAIHandler(aiService *ai.Service, financeService *finance.Service) *AIHandler {
-	return &AIHandler{aiService: aiService, financeService: financeService}
+func NewAIHandler(aiService *ai.Service, financeService *finance.Service, userService *user.Service) *AIHandler {
+	return &AIHandler{aiService: aiService, financeService: financeService, userService: userService}
 }
 
 func (h *AIHandler) RegisterRoutes(public, protected gin.IRouter) {
@@ -29,7 +31,13 @@ func (h *AIHandler) RegisterRoutes(public, protected gin.IRouter) {
 
 func (h *AIHandler) GetInsight(c *gin.Context) {
 	userID := getUserID(c)
-	plan := getPlan(c)
+
+	// Buscar o plano real do BD invés de confiar no JWT
+	u, err := h.userService.GetByID(userID)
+	plan := "free"
+	if err == nil && u != nil {
+		plan = string(u.Plan)
+	}
 
 	// Build context from real financial data
 	ctx, err := h.buildFinancialContext(userID, plan)
@@ -56,7 +64,12 @@ func (h *AIHandler) GetInsight(c *gin.Context) {
 
 func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
 	userID := getUserID(c)
-	plan := getPlan(c)
+
+	u, err := h.userService.GetByID(userID)
+	plan := "free"
+	if err == nil && u != nil {
+		plan = string(u.Plan)
+	}
 
 	ctx, err := h.buildFinancialContext(userID, plan)
 	if err != nil {

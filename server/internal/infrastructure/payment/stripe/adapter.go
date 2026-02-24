@@ -101,15 +101,15 @@ func (a *Adapter) GetSubscription(externalID string) (*payment.SubscriptionInfo,
 		return nil, fmt.Errorf("stripe: get subscription: %w", err)
 	}
 
-	plan := ""
+	priceID := ""
 	if len(sub.Items.Data) > 0 {
-		plan = planFromPriceID(sub.Items.Data[0].Price.ID)
+		priceID = sub.Items.Data[0].Price.ID
 	}
 
 	return &payment.SubscriptionInfo{
 		ExternalID:  sub.ID,
 		CustomerID:  sub.Customer.ID,
-		Plan:        plan,
+		PriceID:     priceID,
 		Status:      string(sub.Status),
 		PeriodStart: sub.CurrentPeriodStart,
 		PeriodEnd:   sub.CurrentPeriodEnd,
@@ -199,7 +199,7 @@ func (a *Adapter) ValidateWebhook(payload []byte, signature string) ([]*payment.
 			CustomerID:     customerID,
 			SubscriptionID: subscriptionID,
 			UserID:         userID,
-			Plan:           plan,
+			PriceID:        plan, // We stored plan slug here previously in metadata, we'll keep as is for backward compat or update later. Since we now use price IDs primarily, checkout doesn't map directly from metadata but from the recurring item if needed. For now we will map what's in metadata as PriceID for compat or we can fetch the price. Checkout metadata usually had 'plan' slug.
 			Status:         "active",
 		})
 
@@ -208,9 +208,9 @@ func (a *Adapter) ValidateWebhook(payload []byte, signature string) ([]*payment.
 		if err := json.Unmarshal(event.Data.Raw, &sub); err != nil {
 			return nil, err
 		}
-		plan := ""
+		priceID := ""
 		if len(sub.Items.Data) > 0 {
-			plan = planFromPriceID(sub.Items.Data[0].Price.ID)
+			priceID = sub.Items.Data[0].Price.ID
 		}
 		customerID := ""
 		if sub.Customer != nil {
@@ -220,7 +220,7 @@ func (a *Adapter) ValidateWebhook(payload []byte, signature string) ([]*payment.
 			Type:           payment.EventSubscriptionUpdated,
 			SubscriptionID: sub.ID,
 			CustomerID:     customerID,
-			Plan:           plan,
+			PriceID:        priceID,
 			Status:         string(sub.Status),
 		})
 
@@ -293,7 +293,6 @@ func (a *Adapter) ListActiveSubscriptions(customerID string) ([]*payment.Subscri
 			ExternalID:  sub.ID,
 			CustomerID:  customID,
 			PriceID:     priceID,
-			Plan:        planFromPriceID(priceID),
 			Status:      string(sub.Status),
 			PeriodStart: sub.CurrentPeriodStart,
 			PeriodEnd:   sub.CurrentPeriodEnd,
@@ -303,17 +302,4 @@ func (a *Adapter) ListActiveSubscriptions(customerID string) ([]*payment.Subscri
 		return nil, fmt.Errorf("stripe: list active subscriptions: %w", err)
 	}
 	return result, nil
-}
-
-// planFromPriceID maps Stripe Price IDs to plan names.
-// Price IDs are configured via env: STRIPE_PRICE_PREMIUM, STRIPE_PRICE_PRO
-func planFromPriceID(priceID string) string {
-	switch priceID {
-	case os.Getenv("STRIPE_PRICE_PREMIUM"), os.Getenv("STRIPE_PRICE_PREMIUM_YEARLY"):
-		return "premium"
-	case os.Getenv("STRIPE_PRICE_PRO"), os.Getenv("STRIPE_PRICE_PRO_YEARLY"):
-		return "pro"
-	default:
-		return "free"
-	}
 }

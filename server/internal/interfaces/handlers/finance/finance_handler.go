@@ -27,6 +27,8 @@ func (h *FinanceHandler) RegisterRoutes(public, protected gin.IRouter) {
 		g.DELETE("/transactions/:id", h.DeleteTransaction)
 		g.GET("/categories", h.ListCategories)
 		g.POST("/categories", h.CreateCategory)
+		g.PUT("/categories/:id", h.UpdateCategory)
+		g.DELETE("/categories/:id", h.DeleteCategory)
 		g.GET("/budget", h.GetBudget)
 		g.POST("/budget", h.UpsertBudget)
 		g.GET("/dashboard", h.GetDashboard)
@@ -253,6 +255,57 @@ func (h *FinanceHandler) CreateCategory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, cat)
+}
+
+type updateCategoryRequest struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+	Icon  string `json:"icon"`
+}
+
+func (h *FinanceHandler) UpdateCategory(c *gin.Context) {
+	userID := getUserID(c)
+	catID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category id"})
+		return
+	}
+
+	var req updateCategoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	payload := &finance.Category{
+		Name:  req.Name,
+		Color: req.Color,
+		Icon:  req.Icon,
+	}
+
+	updatedCat, err := h.financeService.UpdateCategory(catID, userID, payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedCat)
+}
+
+func (h *FinanceHandler) DeleteCategory(c *gin.Context) {
+	userID := getUserID(c)
+	catID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category id"})
+		return
+	}
+
+	if err := h.financeService.DeleteCategory(catID, userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "category deleted"})
 }
 
 func (h *FinanceHandler) GetBudget(c *gin.Context) {

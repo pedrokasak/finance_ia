@@ -27,8 +27,8 @@ interface Plan {
   description: string;
   price_monthly: number;
   price_yearly: number;
-  features: string[];
-  limitations?: string[];
+  features: Array<string | { description: string }>;
+  limitations?: Array<string | { description: string }>;
   popular?: boolean;
   is_active: boolean;
 }
@@ -257,26 +257,30 @@ export function Subscription() {
                 <CardContent className="space-y-6">
                   {/* Features */}
                   <div className="space-y-3">
-                    {plan.features.map((feature: string, index: number) => (
+                    {plan.features.map((feature: any, index: number) => {
+                      const text = typeof feature === 'string' ? feature : feature.description;
+                      return (
                       <div key={index} className="flex items-start space-x-3">
                         <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{feature}</span>
+                        <span className="text-sm">{text}</span>
                       </div>
-                    ))}
+                    )})}
                   </div>
 
                   {/* Limitations */}
                   {(plan.limitations ?? []).length > 0 && (
                     <div className="space-y-2 pt-4 border-t">
                       <p className="text-sm font-medium text-muted-foreground">Limitações:</p>
-                      {(plan.limitations ?? []).map((limitation: string, index: number) => (
+                      {(plan.limitations ?? []).map((limitation: any, index: number) => {
+                        const text = typeof limitation === 'string' ? limitation : limitation.description;
+                        return (
                         <div key={index} className="flex items-start space-x-3">
                           <div className="w-4 h-4 mt-0.5 flex-shrink-0">
                             <div className="w-1 h-1 bg-gray-400 rounded-full mx-auto mt-1.5" />
                           </div>
-                          <span className="text-sm text-muted-foreground">{limitation}</span>
+                          <span className="text-sm text-muted-foreground">{text}</span>
                         </div>
-                      ))}
+                      )})}
                     </div>
                   )}
 

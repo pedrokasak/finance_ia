@@ -11,7 +11,7 @@ import {
 class AuthenticationService implements AuthenticationInterface {
   async login(data: LoginRequest): Promise<AuthenticationResponse> {
     try {
-      const response = await authentication.login(data.email, data.password, data.code);
+      const response = await authentication.login(data.email, data.password, data.code) as { token: string; refreshToken?: string; email: string };
 
       localStorage.setItem('authToken', response.token);
 
