@@ -257,7 +257,7 @@ export function Subscription() {
                 <CardContent className="space-y-6">
                   {/* Features */}
                   <div className="space-y-3">
-                    {plan.features.map((feature: any, index: number) => {
+                    {plan.features.map((feature: string | { description: string }, index: number) => {
                       const text = typeof feature === 'string' ? feature : feature.description;
                       return (
                       <div key={index} className="flex items-start space-x-3">
@@ -271,7 +271,7 @@ export function Subscription() {
                   {(plan.limitations ?? []).length > 0 && (
                     <div className="space-y-2 pt-4 border-t">
                       <p className="text-sm font-medium text-muted-foreground">Limitações:</p>
-                      {(plan.limitations ?? []).map((limitation: any, index: number) => {
+                      {(plan.limitations ?? []).map((limitation: string | { description: string }, index: number) => {
                         const text = typeof limitation === 'string' ? limitation : limitation.description;
                         return (
                         <div key={index} className="flex items-start space-x-3">

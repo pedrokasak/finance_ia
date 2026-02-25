@@ -93,6 +93,7 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 		AvatarURL            *string   `json:"avatar_url"`
 		FinancialMethodID    *string   `json:"financial_method_id"`
 		NotificationsEnabled *bool     `json:"notifications_enabled"`
+		MonthlyIncome        *float64  `json:"monthly_income"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "dados inválidos"})
@@ -132,6 +133,9 @@ func (h *UserHandler) UpdateUser(c *gin.Context) {
 			}
 			userObj.FinancialMethodID = &methodUUID
 		}
+	}
+	if req.MonthlyIncome != nil {
+		userObj.MonthlyIncome = *req.MonthlyIncome
 	}
 
 	if err := h.usecase.Update(userObj); err != nil {

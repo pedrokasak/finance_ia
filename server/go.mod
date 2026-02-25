@@ -15,7 +15,7 @@ require (
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/sony/gobreaker v1.0.0
 	github.com/stretchr/testify v1.11.1
-	github.com/stripe/stripe-go/v76 v76.25.0
+	github.com/stripe/stripe-go/v81 v81.4.0
 	golang.org/x/crypto v0.48.0
 	google.golang.org/genai v1.47.0
 	gorm.io/driver/postgres v1.6.0

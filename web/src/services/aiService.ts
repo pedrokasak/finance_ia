@@ -20,8 +20,11 @@ const aiService = {
     getInsight: () =>
         api.get<AIInsight>('/ai/insight').then((r) => r.data),
 
-    getFullAnalysis: () =>
-        api.get<{ insights: AIInsight[] }>('/ai/analysis').then((r) => r.data),
+    getDiagnostic: () =>
+        api.get<{ diagnostic: AIInsight }>('/ai/diagnostic').then((r) => r.data),
+
+    getSimulator: () =>
+        api.get<{ projection: AIInsight }>('/ai/simulator').then((r) => r.data),
 
     getHealthScore: () =>
         api.get<HealthScore>('/ai/health-score').then((r) => r.data),

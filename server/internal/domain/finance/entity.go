@@ -16,7 +16,7 @@ const (
 
 // Transaction represents a financial transaction
 type Transaction struct {
-	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primary_key"`
 	UserID         uuid.UUID       `json:"user_id" gorm:"type:uuid;not null;index"`
 	CategoryID     *uuid.UUID      `json:"category_id" gorm:"type:uuid"`
 	Type           TransactionType `json:"type" gorm:"not null"`
@@ -42,7 +42,7 @@ const (
 
 // Category represents an expense or income category
 type Category struct {
-	ID        uuid.UUID    `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID        uuid.UUID    `json:"id" gorm:"type:uuid;primary_key"`
 	UserID    *uuid.UUID   `json:"user_id" gorm:"type:uuid"` // nil = default category
 	Name      string       `json:"name" gorm:"not null"`
 	Type      CategoryType `json:"type" gorm:"not null"`
@@ -55,7 +55,7 @@ type Category struct {
 
 // Budget stores the user's monthly budget allocation by financial method
 type Budget struct {
-	ID             uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID             uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
 	UserID         uuid.UUID `json:"user_id" gorm:"type:uuid;not null;uniqueIndex:idx_budget_user_period"`
 	Period         string    `json:"period" gorm:"not null;uniqueIndex:idx_budget_user_period"` // "2024-01"
 	TotalIncome    float64   `json:"total_income" gorm:"not null"`

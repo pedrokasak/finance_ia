@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useTransition } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,8 +20,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { FinancialMethodModal } from '@/components/finance/FinancialMethodModal';
+import financeService from '@/services/financeService';
 import { useUser } from '@/contexts/UserContext';
+import { FinancialMethodModal } from '../finance/FinancialMethodModal';
 
 interface UserInfo {
   id: string;
@@ -32,6 +34,7 @@ interface UserInfo {
   financial_method_id?: string;
   notifications_enabled?: boolean;
   two_fa_enabled?: boolean;
+  monthly_income?: number;
 }
 
 interface FinancialMethod {
@@ -61,19 +64,21 @@ const planConfig: Record<string, { label: string; color: string; price: string; 
 
 export function Profile() {
   const jwt = getJWTPayload();
+  const queryClient = useQueryClient();
   const { updateAvatar, refreshProfile } = useUser();
   const [user, setUser] = useState<UserInfo>({
     id: jwt.user_id || '',
     email: jwt.email || '',
     plan: jwt.plan || 'free',
   });
-  const [saving, setSaving] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [avatarFileName, setAvatarFileName] = useState('');
   const [financialMethodId, setFinancialMethodId] = useState<string>('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [methods, setMethods] = useState<FinancialMethod[]>([]);
+  const [monthlyIncome, setMonthlyIncome] = useState<number | ''>('');
   const [isMethodModalOpen, setIsMethodModalOpen] = useState(false);
 
   // 2FA Setup States
@@ -82,63 +87,67 @@ export function Profile() {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifying2FA, setVerifying2FA] = useState(false);
 
-  // Try to fetch user details from API
+  // Queries
+  const { data: userData } = useQuery({
+    queryKey: ['userProfile', jwt.user_id],
+    queryFn: () => api.get(`/user/${jwt.user_id}`).then((res) => res.data?.user || res.data),
+    enabled: !!jwt.user_id,
+  });
+
+  const { data: methods = [] } = useQuery<FinancialMethod[]>({
+    queryKey: ['financialMethods'],
+    queryFn: () => api.get('/finance/methods').then((res) => res.data?.data || res.data || []),
+  });
+
+  // Sync state when data is loaded
   useEffect(() => {
-    if (!jwt.user_id) return;
-
-    // Fetch user details
-    api.get(`/user/${jwt.user_id}`).then((res) => {
-      const u = (res.data)?.user || res.data;
-      if (u) {
-        setUser((prev) => ({ ...prev, ...u }));
-        setFirstName(u.first_name || '');
-        setLastName(u.last_name || '');
-        setAvatarUrl(u.avatar_url || '');
-        setFinancialMethodId(u.financial_method_id || '');
-        if (u.notifications_enabled !== undefined) {
-          setNotificationsEnabled(u.notifications_enabled);
-        }
+    if (userData) {
+      setUser((prev) => ({ ...prev, ...userData }));
+      setFirstName(userData.first_name || '');
+      setLastName(userData.last_name || '');
+      setAvatarUrl(userData.avatar_url || '');
+      setFinancialMethodId(userData.financial_method_id || '');
+      setMonthlyIncome(userData.monthly_income || '');
+      if (userData.notifications_enabled !== undefined) {
+        setNotificationsEnabled(userData.notifications_enabled);
       }
-    }).catch(() => {
-      setFirstName(jwt.email?.split('@')[0] || '');
-    });
-
-    // Fetch financial methods
-    api.get('/finance/methods').then((res) => {
-      setMethods((res.data)?.data || res.data || []);
-    }).catch(console.error);
-  }, [jwt.user_id, jwt.email]);
+    } else if (!jwt.user_id) {
+       setFirstName(jwt.email?.split('@')[0] || '');
+    }
+  }, [userData, jwt.user_id, jwt.email]);
 
   const handleSave = async () => {
     if (!jwt.user_id) return;
-    setSaving(true);
     try {
       await api.put(`/user/update/${jwt.user_id}`, {
         first_name: firstName,
         last_name: lastName,
         avatar_url: avatarUrl || null,
         financial_method_id: financialMethodId || null,
-        notifications_enabled: notificationsEnabled
+        notifications_enabled: notificationsEnabled,
+        monthly_income: monthlyIncome === '' ? 0 : Number(monthlyIncome)
       });
-      toast.success('Perfil atualizado com sucesso!', {
-        style: {
-          backgroundColor: '#025439ff',
-          color: '#fff',
-          border: 'none',
-        },
+      startTransition(() => {
+        toast.success('Perfil atualizado com sucesso!', {
+          style: {
+            backgroundColor: '#025439ff',
+            color: '#fff',
+            border: 'none',
+          },
+        });
+        queryClient.invalidateQueries({ queryKey: ['userProfile', jwt.user_id] });
+        refreshProfile();
       });
-      // Atualiza contexto global (Header)
-      refreshProfile();
     } catch {
-      toast.error('Erro ao atualizar perfil.', {
-        style: {
-          backgroundColor: '#7b0821ff',
-          color: '#fff',
-          border: 'none',
-        }
+      startTransition(() => {
+        toast.error('Erro ao atualizar perfil.', {
+          style: {
+            backgroundColor: '#7b0821ff',
+            color: '#fff',
+            border: 'none',
+          }
+        });
       });
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -207,6 +216,7 @@ export function Profile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
+      setAvatarFileName(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64 = reader.result as string;
@@ -264,13 +274,26 @@ export function Profile() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input type="email" value={user.email} readOnly className="pl-10 bg-muted cursor-not-allowed" />
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input type="email" value={user.email} readOnly className="pl-10 bg-muted cursor-not-allowed" />
+                </div>
+                <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
               </div>
-              <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+              <div className="space-y-2">
+                <Label>Renda Mensal (R$)</Label>
+                <Input 
+                  type="number" 
+                  step="0.01"
+                  placeholder="0.00" 
+                  value={monthlyIncome} 
+                  onChange={(e) => setMonthlyIncome(e.target.value ? Number(e.target.value) : '')} 
+                />
+                <p className="text-xs text-muted-foreground">Usada para diagnósticos da IA.</p>
+              </div>
             </div>
 
             <Separator />
@@ -278,12 +301,20 @@ export function Profile() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="avatar-upload">Foto do Perfil</Label>
-                <Input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="flex-1"
+                  />
+                  {avatarFileName && (
+                    <span className="text-xs text-muted-foreground truncate w-24" title={avatarFileName}>
+                      {avatarFileName}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="space-y-2">
                 <Label>Método de Planejamento</Label>
@@ -303,10 +334,10 @@ export function Profile() {
               </div>
             </div>
 
-            <Button onClick={handleSave} disabled={saving} className="w-full">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Salvar Alterações
-            </Button>
+            <Button onClick={handleSave} disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isPending ? 'Salvando...' : 'Salvar todas as alterações'}
+          </Button>
           </CardContent>
         </Card>
 

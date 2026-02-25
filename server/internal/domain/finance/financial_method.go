@@ -16,7 +16,7 @@ type FinancialMethodSplit struct {
 
 // FinancialMethod represents a budgeting strategy
 type FinancialMethod struct {
-	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key"`
 	Key         string    `json:"key" gorm:"unique;not null"` // e.g., "50-30-20"
 	Name        string    `json:"name" gorm:"not null"`
 	Tagline     string    `json:"tagline" gorm:"not null"`

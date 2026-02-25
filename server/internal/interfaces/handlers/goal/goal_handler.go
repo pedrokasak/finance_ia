@@ -19,23 +19,14 @@ func NewGoalHandler(service *goal.Service) *GoalHandler {
 func (h *GoalHandler) RegisterRoutes(public, protected gin.IRouter) {
 	g := protected.Group("/goals")
 	{
-		g.POST("/", h.requireProOrPremium, h.CreateGoal)
-		g.GET("/", h.requireProOrPremium, h.GetGoals)
-		g.PUT("/:id", h.requireProOrPremium, h.UpdateGoal)
-		g.DELETE("/:id", h.requireProOrPremium, h.DeleteGoal)
+		g.POST("/", h.CreateGoal)
+		g.GET("/", h.GetGoals)
+		g.PUT("/:id", h.UpdateGoal)
+		g.DELETE("/:id", h.DeleteGoal)
 	}
 }
 
-func (h *GoalHandler) requireProOrPremium(c *gin.Context) {
-	plan, _ := c.Get("plan")
-	p, ok := plan.(string)
-	if !ok || (p != "pro" && p != "premium") {
-		c.JSON(http.StatusForbidden, gin.H{"error": "This feature is only available for Pro or Premium users", "upgrade": true})
-		c.Abort()
-		return
-	}
-	c.Next()
-}
+// requireProOrPremium was removed to allow free users access up to limits
 
 func (h *GoalHandler) CreateGoal(c *gin.Context) {
 	var input struct {
@@ -56,6 +47,19 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 	if err != nil {
 		// fallback simple parse
 		targetDate, _ = http.ParseTime(input.TargetDate + "T00:00:00Z")
+	}
+
+	// Validate Free Tier Limit
+	planRaw, _ := c.Get("plan")
+	if planStr, ok := planRaw.(string); ok && planStr == "free" || planStr == "" {
+		existingGoals, err := h.service.GetByUser(userID)
+		if err == nil && len(existingGoals) >= 2 {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   "O plano gratuito permite criar no máximo 2 metas. Faça upgrade para o Pro para metas ilimitadas.",
+				"upgrade": true,
+			})
+			return
+		}
 	}
 
 	newGoal := &goal.Goal{

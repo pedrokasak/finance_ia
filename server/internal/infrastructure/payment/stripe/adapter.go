@@ -7,15 +7,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/stripe/stripe-go/v76"
-	portalsession "github.com/stripe/stripe-go/v76/billingportal/session"
-	checkoutsession "github.com/stripe/stripe-go/v76/checkout/session"
-	"github.com/stripe/stripe-go/v76/customer"
-	"github.com/stripe/stripe-go/v76/invoice"
-	"github.com/stripe/stripe-go/v76/price"
-	"github.com/stripe/stripe-go/v76/product"
-	stripeSubscription "github.com/stripe/stripe-go/v76/subscription"
-	"github.com/stripe/stripe-go/v76/webhook"
+	"github.com/stripe/stripe-go/v81"
+	portalsession "github.com/stripe/stripe-go/v81/billingportal/session"
+	checkoutsession "github.com/stripe/stripe-go/v81/checkout/session"
+	"github.com/stripe/stripe-go/v81/customer"
+	"github.com/stripe/stripe-go/v81/invoice"
+	"github.com/stripe/stripe-go/v81/price"
+	"github.com/stripe/stripe-go/v81/product"
+	stripeSubscription "github.com/stripe/stripe-go/v81/subscription"
+	"github.com/stripe/stripe-go/v81/webhook"
 )
 
 // Adapter implements the payment.PaymentGateway port for Stripe.

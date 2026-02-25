@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useTransition } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,28 +22,37 @@ const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
     PieChart, Layers, Coins, Landmark, Wallet, Target, TrendingUp, Percent, Flame
 };
 
+function getJWTPayload(): { email?: string; plan?: string; user_id?: string } {
+    try {
+        const token = localStorage.getItem('authToken');
+        if (!token) return {};
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload;
+    } catch {
+        return {};
+    }
+}
+
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const { theme, setTheme } = useTheme();
     const [step, setStep] = useState(1);
-    const [methods, setMethods] = useState<FinancialMethod[]>([]);
-    const [methodsLoading, setMethodsLoading] = useState(true);
     const [selectedMethod, setSelectedMethod] = useState<FinancialMethod | null>(null);
     const [detailMethod, setDetailMethod] = useState<FinancialMethod | null>(null);
     const [monthlyIncome, setMonthlyIncome] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [isPending, startTransition] = useTransition();
 
     const totalSteps = 4;
 
-    useEffect(() => {
-        financeService.getMethods()
-            .then((data) => setMethods(data || []))
-            .catch(console.error)
-            .finally(() => setMethodsLoading(false));
-    }, []);
+    const { data: methodsData, isLoading: methodsLoading } = useQuery({
+        queryKey: ['financialMethods'],
+        queryFn: () => financeService.getMethods().then(res => res || []),
+    });
+
+    const methods = methodsData || [];
 
     const handleComplete = async () => {
         if (!selectedMethod || !monthlyIncome) return;
-        setLoading(true);
+        
         try {
             const income = parseFloat(monthlyIncome.replace(',', '.'));
             const split = selectedMethod.split;
@@ -58,11 +68,22 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 savings_percent: savings?.percent ?? 20,
             });
 
-            onComplete();
-        } catch {
-            onComplete(); // Don't block the user if API fails
-        } finally {
-            setLoading(false);
+            const jwt = getJWTPayload();
+            if (jwt.user_id) {
+                await api.put(`/user/update/${jwt.user_id}`, {
+                    financial_method_id: selectedMethod.id,
+                    monthly_income: income,
+                });
+            }
+
+            startTransition(() => {
+                onComplete();
+            });
+        } catch (error) {
+            console.error('Erro na conclusão do onboarding', error);
+            startTransition(() => {
+                onComplete(); // Don't block the user if API fails
+            });
         }
     };
 
@@ -315,10 +336,10 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             </Button>
                             <Button
                                 className="flex-1"
-                                disabled={!monthlyIncome || parseFloat(monthlyIncome) <= 0 || loading}
+                                disabled={!monthlyIncome || parseFloat(monthlyIncome) <= 0 || isPending}
                                 onClick={handleComplete}
                             >
-                                {loading ? 'Configurando...' : 'Começar minha jornada 🚀'}
+                                {isPending ? 'Configurando...' : 'Começar minha jornada 🚀'}
                             </Button>
                         </div>
                     </div>

@@ -40,6 +40,8 @@ type User struct {
 	TwoFAEnabled         bool       `json:"two_fa_enabled" gorm:"default:false"`
 	TwoFASecret          string     `json:"-" gorm:"default:''"`
 	StripeCustomerID     string     `json:"-" gorm:"default:''"`
+	AICoachUsesThisWeek  int        `json:"ai_coach_uses_this_week" gorm:"default:0"`
+	LastAICoachReset     time.Time  `json:"last_ai_coach_reset"`
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`
 }

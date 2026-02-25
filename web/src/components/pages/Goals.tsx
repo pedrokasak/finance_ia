@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Lock, Target, Plus, Plane, Car, Home, TrendingUp, MoreHorizontal, Trash } from 'lucide-react';
+import { Lock, Target, Plus, Plane, Car, Home, TrendingUp, Trash } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Goal {

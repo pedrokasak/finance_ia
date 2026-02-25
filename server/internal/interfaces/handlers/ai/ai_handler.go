@@ -5,6 +5,7 @@ import (
 	"finance-ia/internal/domain/finance"
 	"finance-ia/internal/domain/user"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -24,7 +25,11 @@ func (h *AIHandler) RegisterRoutes(public, protected gin.IRouter) {
 	g := protected.Group("/ai")
 	{
 		g.GET("/insight", h.GetInsight)
-		g.GET("/analysis", h.GetFullAnalysis)
+		g.GET("/diagnostic", h.GetDiagnostic)
+		g.GET("/simulator", h.GetSimulator)
+		g.GET("/coach", h.GetCoachStatus)
+		g.POST("/coach", h.PostCoachMessage)
+		g.GET("/missions", h.GetMissions)
 		g.GET("/health-score", h.GetHealthScore)
 	}
 }
@@ -62,7 +67,7 @@ func (h *AIHandler) GetInsight(c *gin.Context) {
 	c.JSON(http.StatusOK, insight)
 }
 
-func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
+func (h *AIHandler) GetDiagnostic(c *gin.Context) {
 	userID := getUserID(c)
 
 	u, err := h.userService.GetByID(userID)
@@ -77,7 +82,7 @@ func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
 		return
 	}
 
-	insights, err := h.aiService.GetFullAnalysis(userID, plan, *ctx)
+	insight, err := h.aiService.GetDiagnostic(userID, plan, *ctx)
 	if err != nil {
 		if err.Error()[:17] == "upgrade_required:" {
 			c.JSON(http.StatusForbidden, gin.H{
@@ -90,7 +95,123 @@ func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"insights": insights})
+	c.JSON(http.StatusOK, gin.H{"diagnostic": insight})
+}
+
+func (h *AIHandler) GetSimulator(c *gin.Context) {
+	userID := getUserID(c)
+
+	u, err := h.userService.GetByID(userID)
+	plan := "free"
+	if err == nil && u != nil {
+		plan = string(u.Plan)
+	}
+
+	ctx, err := h.buildFinancialContext(userID, plan)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load financial data"})
+		return
+	}
+
+	insight, err := h.aiService.GetProjection(userID, plan, *ctx)
+	if err != nil {
+		if err.Error()[:17] == "upgrade_required:" {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   err.Error(),
+				"upgrade": true,
+			})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"projection": insight})
+}
+
+func (h *AIHandler) GetCoachStatus(c *gin.Context) {
+	userID := getUserID(c)
+
+	u, err := h.userService.GetByID(userID)
+	if err != nil || u == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		return
+	}
+
+	maxUses := 50
+	now := time.Now()
+
+	if now.Sub(u.LastAICoachReset) > 7*24*time.Hour {
+		u.AICoachUsesThisWeek = 0
+		u.LastAICoachReset = now
+		h.userService.Update(u) // Ignora erro de persistência silenciosa
+	}
+
+	remaining := maxUses - u.AICoachUsesThisWeek
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"remaining": remaining,
+		"max":       maxUses,
+		"uses":      u.AICoachUsesThisWeek,
+	})
+}
+
+func (h *AIHandler) PostCoachMessage(c *gin.Context) {
+	userID := getUserID(c)
+
+	u, err := h.userService.GetByID(userID)
+	if err != nil || u == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
+		return
+	}
+
+	if u.Plan != "premium" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Upgrade required: Coach is Premium only.", "upgrade": true})
+		return
+	}
+
+	maxUses := 50
+	now := time.Now()
+
+	// Check weekly reset
+	if now.Sub(u.LastAICoachReset) > 7*24*time.Hour {
+		u.AICoachUsesThisWeek = 0
+		u.LastAICoachReset = now
+	}
+
+	if u.AICoachUsesThisWeek >= maxUses {
+		c.JSON(http.StatusTooManyRequests, gin.H{
+			"error":     "Limite semanal do Coach atingido. Tente novamente próxima semana.",
+			"remaining": 0,
+			"max":       maxUses,
+		})
+		return
+	}
+
+	// Increment usages
+	u.AICoachUsesThisWeek++
+	if err := h.userService.Update(u); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to secure AI token"})
+		return
+	}
+
+	remaining := maxUses - u.AICoachUsesThisWeek
+
+	// Here would go the actual logic to call the AI provider to chat
+	// that we will implement next.
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Sua mensagem foi recebida pela IA (Em Desenvolvimento).",
+		"remaining": remaining,
+		"max":       maxUses,
+	})
+}
+
+func (h *AIHandler) GetMissions(c *gin.Context) {
+	c.JSON(http.StatusNotImplemented, gin.H{"message": "Missões em desenvolvimento."})
 }
 
 func (h *AIHandler) GetHealthScore(c *gin.Context) {

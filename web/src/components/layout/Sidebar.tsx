@@ -9,6 +9,11 @@ import {
   TrendingUp,
   X,
   Target,
+  BrainCircuit,
+  Activity,
+  LineChart,
+  MessageSquare,
+  Award,
 } from 'lucide-react';
 import type { Page } from '@/App';
 
@@ -49,6 +54,31 @@ const menuItems = [
     id: 'subscription' as Page,
     label: 'Assinatura',
     icon: Crown,
+  },
+  {
+    id: 'ai_insight' as Page,
+    label: 'Visão Geral IA',
+    icon: BrainCircuit,
+  },
+  {
+    id: 'ai_diagnostic' as Page,
+    label: 'Diagnóstico & Perfil',
+    icon: Activity,
+  },
+  {
+    id: 'ai_simulator' as Page,
+    label: 'Simulador (Pro)',
+    icon: LineChart,
+  },
+  {
+    id: 'ai_coach' as Page,
+    label: 'Coach IA (Premium)',
+    icon: MessageSquare,
+  },
+  {
+    id: 'ai_missions' as Page,
+    label: 'Missões (Premium)',
+    icon: Award,
   },
 ];
 

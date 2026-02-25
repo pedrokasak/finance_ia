@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"finance-ia/internal/domain/ai"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -48,43 +48,30 @@ func (p *GroqProvider) GenerateInsight(ctx ai.FinancialContext) (*ai.AIInsight, 
 	}, nil
 }
 
-func (p *GroqProvider) GenerateFullAnalysis(ctx ai.FinancialContext) ([]*ai.AIInsight, error) {
-	prompts := []struct {
-		insightType ai.InsightType
-		title       string
-		prompt      string
-	}{
-		{
-			insightType: ai.InsightTypeWarning,
-			title:       "⚠️ Diagnóstico de Saúde Financeira",
-			prompt:      buildHealthDiagnosticPrompt(ctx),
-		},
-		{
-			insightType: ai.InsightTypeTip,
-			title:       "🎯 Recomendações Prioritárias",
-			prompt:      buildRecommendationsPrompt(ctx),
-		},
-		{
-			insightType: ai.InsightTypeProjection,
-			title:       "📈 Projeção Financeira",
-			prompt:      buildProjectionPrompt(ctx),
-		},
+func (p *GroqProvider) GenerateDiagnostic(ctx ai.FinancialContext) (*ai.AIInsight, error) {
+	prompt := buildHealthDiagnosticPrompt(ctx)
+	response, err := p.generate(prompt)
+	if err != nil {
+		return nil, err
 	}
+	return &ai.AIInsight{
+		Type:    ai.InsightTypeWarning,
+		Title:   "⚠️ Diagnóstico de Saúde Financeira",
+		Content: response,
+	}, nil
+}
 
-	var insights []*ai.AIInsight
-	for _, pr := range prompts {
-		response, err := p.generate(pr.prompt)
-		if err != nil {
-			continue
-		}
-		insights = append(insights, &ai.AIInsight{
-			Type:    pr.insightType,
-			Title:   pr.title,
-			Content: response,
-		})
+func (p *GroqProvider) GenerateProjection(ctx ai.FinancialContext) (*ai.AIInsight, error) {
+	prompt := buildProjectionPrompt(ctx)
+	response, err := p.generate(prompt)
+	if err != nil {
+		return nil, err
 	}
-
-	return insights, nil
+	return &ai.AIInsight{
+		Type:    ai.InsightTypeProjection,
+		Title:   "📈 Projeção Financeira",
+		Content: response,
+	}, nil
 }
 
 func (p *GroqProvider) generate(prompt string) (string, error) {
@@ -124,7 +111,7 @@ func (p *GroqProvider) generate(prompt string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("groq api error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 

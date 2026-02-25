@@ -18,6 +18,8 @@ type InsightRepository interface {
 type AIProvider interface {
 	// GenerateInsight generates a short financial insight (used for free plan)
 	GenerateInsight(ctx FinancialContext) (*AIInsight, error)
-	// GenerateFullAnalysis generates a comprehensive monthly analysis (premium+)
-	GenerateFullAnalysis(ctx FinancialContext) ([]*AIInsight, error)
+	// GenerateDiagnostic generates a comprehensive monthly analysis (premium+)
+	GenerateDiagnostic(ctx FinancialContext) (*AIInsight, error)
+	// GenerateProjection generates a future projection (premium+)
+	GenerateProjection(ctx FinancialContext) (*AIInsight, error)
 }

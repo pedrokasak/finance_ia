@@ -13,6 +13,11 @@ import { AuthContainer } from '@/components/auth/AuthContainer';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { UserProvider } from '@/contexts/UserContext';
 import { Goals } from './components/pages/Goals';
+import { AiInsight } from './components/pages/ai/AiInsight';
+import { AiDiagnostic } from './components/pages/ai/AiDiagnostic';
+import { AiSimulator } from './components/pages/ai/AiSimulator';
+import { AiCoach } from './components/pages/ai/AiCoach';
+import { AiMissions } from './components/pages/ai/AiMissions';
 
 export type Page =
   | 'dashboard'
@@ -20,7 +25,13 @@ export type Page =
   | 'reports'
   | 'profile'
   | 'subscription'
-  | 'goals';
+  | 'goals'
+  // Novas rotas de IA Dashboard:
+  | 'ai_insight'
+  | 'ai_diagnostic'
+  | 'ai_simulator'
+  | 'ai_coach'
+  | 'ai_missions';
 
 const queryClient = new QueryClient();
 
@@ -32,7 +43,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
     const params = new URLSearchParams(window.location.search);
     const page = params.get('page');
-    if (page && ['dashboard', 'transactions', 'reports', 'profile', 'subscription', 'goals'].includes(page)) {
+    if (page && ['dashboard', 'transactions', 'reports', 'profile', 'subscription', 'goals', 'ai_insight', 'ai_diagnostic', 'ai_simulator', 'ai_coach', 'ai_missions'].includes(page)) {
       return page as Page;
     }
     return 'dashboard';
@@ -75,6 +86,16 @@ function App() {
         return <Subscription />;
       case 'goals':
         return <Goals />;
+      case 'ai_insight':
+        return <AiInsight />;
+      case 'ai_diagnostic':
+        return <AiDiagnostic />;
+      case 'ai_simulator':
+        return <AiSimulator />;
+      case 'ai_coach':
+        return <AiCoach />;
+      case 'ai_missions':
+        return <AiMissions />;
       default:
         return <Dashboard />;
     }

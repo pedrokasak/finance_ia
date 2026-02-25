@@ -95,15 +95,58 @@ func TestGoalHandler_CreateGoal(t *testing.T) {
 		mockRepo.AssertExpectations(t)
 	})
 
-	t.Run("invalid_plan", func(t *testing.T) {
+	t.Run("free_plan_limit_reached", func(t *testing.T) {
 		mockRepo := new(MockGoalRepository)
-		rFree, _ := setupRouter("free", mockRepo)
-		req, _ := http.NewRequest("POST", "/goals/", bytes.NewBuffer([]byte("{}")))
+		rFree, userID := setupRouter("free", mockRepo)
+
+		// Mock existing goals >= 2
+		existingGoals := []*goal.Goal{
+			{ID: uuid.New(), UserID: userID},
+			{ID: uuid.New(), UserID: userID},
+		}
+		mockRepo.On("FindByUserID", userID).Return(existingGoals, nil).Once()
+
+		body := map[string]interface{}{
+			"name":          "Terceira Meta",
+			"target_amount": 10000,
+			"target_date":   "2030-01-01T00:00:00Z",
+		}
+		jsonValue, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/goals/", bytes.NewBuffer(jsonValue))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 		rFree.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusForbidden, w.Code)
+		mockRepo.AssertExpectations(t)
+	})
+
+	t.Run("free_plan_success", func(t *testing.T) {
+		mockRepo := new(MockGoalRepository)
+		rFree, userID := setupRouter("free", mockRepo)
+
+		// Mock existing goals < 2
+		existingGoals := []*goal.Goal{
+			{ID: uuid.New(), UserID: userID},
+		}
+		mockRepo.On("FindByUserID", userID).Return(existingGoals, nil).Once()
+		mockRepo.On("Create", mock.AnythingOfType("*goal.Goal")).Return(nil).Once()
+
+		body := map[string]interface{}{
+			"name":          "Segunda Meta",
+			"target_amount": 10000,
+			"target_date":   "2030-01-01T00:00:00Z",
+		}
+		jsonValue, _ := json.Marshal(body)
+
+		req, _ := http.NewRequest("POST", "/goals/", bytes.NewBuffer(jsonValue))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		rFree.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		mockRepo.AssertExpectations(t)
 	})
 
 	t.Run("invalid_body", func(t *testing.T) {
@@ -153,7 +196,7 @@ func TestGoalHandler_GetGoals(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var res []goal.Goal
-		json.Unmarshal(w.Body.Bytes(), &res)
+		_ = json.Unmarshal(w.Body.Bytes(), &res)
 		assert.Len(t, res, 1)
 		mockRepo.AssertExpectations(t)
 	})
@@ -205,7 +248,6 @@ func TestGoalHandler_DeleteGoal(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.Code)
 	})
 }
-
 func TestGoalHandler_UpdateGoal(t *testing.T) {
 	goalID := uuid.New()
 

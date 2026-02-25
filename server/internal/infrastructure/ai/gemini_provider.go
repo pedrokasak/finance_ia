@@ -55,44 +55,32 @@ func (g *GeminiProvider) GenerateInsight(ctx ai.FinancialContext) (*ai.AIInsight
 	}, nil
 }
 
-// GenerateFullAnalysis generates a comprehensive financial analysis (premium/pro)
-func (g *GeminiProvider) GenerateFullAnalysis(ctx ai.FinancialContext) ([]*ai.AIInsight, error) {
-	prompts := []struct {
-		insightType ai.InsightType
-		title       string
-		prompt      string
-	}{
-		{
-			insightType: ai.InsightTypeWarning,
-			title:       "⚠️ Diagnóstico de Saúde Financeira",
-			prompt:      buildHealthDiagnosticPrompt(ctx),
-		},
-		{
-			insightType: ai.InsightTypeTip,
-			title:       "🎯 Recomendações Prioritárias",
-			prompt:      buildRecommendationsPrompt(ctx),
-		},
-		{
-			insightType: ai.InsightTypeProjection,
-			title:       "📈 Projeção Financeira",
-			prompt:      buildProjectionPrompt(ctx),
-		},
+// GenerateDiagnostic generates a comprehensive financial analysis
+func (g *GeminiProvider) GenerateDiagnostic(ctx ai.FinancialContext) (*ai.AIInsight, error) {
+	prompt := buildHealthDiagnosticPrompt(ctx)
+	response, err := g.generate(prompt)
+	if err != nil {
+		return nil, err
 	}
+	return &ai.AIInsight{
+		Type:    ai.InsightTypeWarning,
+		Title:   "⚠️ Diagnóstico de Saúde Financeira",
+		Content: response,
+	}, nil
+}
 
-	var insights []*ai.AIInsight
-	for _, p := range prompts {
-		response, err := g.generate(p.prompt)
-		if err != nil {
-			continue // don't fail entire analysis if one prompt fails
-		}
-		insights = append(insights, &ai.AIInsight{
-			Type:    p.insightType,
-			Title:   p.title,
-			Content: response,
-		})
+// GenerateProjection generates a future projection
+func (g *GeminiProvider) GenerateProjection(ctx ai.FinancialContext) (*ai.AIInsight, error) {
+	prompt := buildProjectionPrompt(ctx)
+	response, err := g.generate(prompt)
+	if err != nil {
+		return nil, err
 	}
-
-	return insights, nil
+	return &ai.AIInsight{
+		Type:    ai.InsightTypeProjection,
+		Title:   "📈 Projeção Financeira",
+		Content: response,
+	}, nil
 }
 
 func (g *GeminiProvider) generate(prompt string) (string, error) {

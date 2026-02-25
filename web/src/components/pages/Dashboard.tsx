@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useTransition } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Card,
   CardContent,
@@ -43,8 +44,8 @@ import {
   Cell,
 } from 'recharts';
 import { CustomTooltip, PieTooltip } from '@/components/ui/custom-tooltip';
-import financeService, { DashboardSummary, Category } from '@/services/financeService';
-import aiService, { AIInsight } from '@/services/aiService';
+import financeService from '@/services/financeService';
+import aiService from '@/services/aiService';
 import { toast } from 'sonner';
 
 const levelColors: Record<string, string> = {
@@ -94,19 +95,14 @@ function HealthScoreRing({ score, level }: { score: number; level: string }) {
 }
 
 function AIInsightCard({ plan }: { plan?: string }) {
-  const [insight, setInsight] = useState<AIInsight | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: insight, isPending: isQueryPending, error: queryError } = useQuery({
+    queryKey: ['aiInsight'],
+    queryFn: () => aiService.getInsight(),
+    retry: false,
+  });
 
-  useEffect(() => {
-    aiService.getInsight()
-      .then(setInsight)
-      .catch((err) => {
-        const msg = err.response?.data?.error || 'Erro ao carregar insight';
-        setError(msg);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+  const loading = isQueryPending;
+  const error = queryError ? (queryError as { response?: { data?: { error?: string } } }).response?.data?.error || 'Erro ao carregar insight' : null;
 
   const isRateLimited = error?.includes('rate_limited');
   const needsUpgrade = error?.includes('upgrade');
@@ -160,8 +156,20 @@ function AIInsightCard({ plan }: { plan?: string }) {
 
 export function Dashboard() {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
-  const [summary, setSummary] = useState<DashboardSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const [isPending, startTransition] = useTransition();
+
+  const { data: summary, isPending: isSummaryPending } = useQuery({
+    queryKey: ['dashboardSummary'],
+    queryFn: () => financeService.getDashboard(),
+  });
+
+  const { data: categories = [], isPending: isCategoriesPending } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => financeService.getCategories(),
+  });
+
+  const loading = isPending || isSummaryPending || isCategoriesPending;
 
   // Quick-add transaction modal state
   const [txDialogOpen, setTxDialogOpen] = useState(false);
@@ -170,12 +178,9 @@ export function Dashboard() {
   const [txAmount, setTxAmount] = useState('');
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txCatId, setTxCatId] = useState('');
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [txSaving, setTxSaving] = useState(false);
 
   // Category management modal state
   const [catDialogOpen, setCatDialogOpen] = useState(false);
-  const [catSaving, setCatSaving] = useState(false);
   const [catEditId, setCatEditId] = useState<string | null>(null);
   const [catName, setCatName] = useState('');
   const [catType, setCatType] = useState<'income' | 'expense'>('expense');
@@ -190,7 +195,11 @@ export function Dashboard() {
   const handleTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!txAmount || parseFloat(txAmount) <= 0) { toast.error('Valor inválido'); return; }
-    setTxSaving(true);
+    
+    startTransition(() => {
+      setTxDialogOpen(false);
+    });
+
     try {
       await financeService.createTransaction({ 
         type: txType, 
@@ -199,29 +208,17 @@ export function Dashboard() {
         date: txDate, 
         category_id: txCatId || undefined 
       });
-      toast.success(`${txType === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
-      setTxDialogOpen(false);
-      fetchDashboard();
-    } catch { toast.error('Erro ao salvar'); } finally { setTxSaving(false); }
+      startTransition(() => {
+        toast.success(`${txType === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
+        queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      });
+    } catch { toast.error('Erro ao salvar'); }
   };
-
-  const fetchDashboard = useCallback(() => {
-    setLoading(true);
-    fetchCategories();
-    financeService.getDashboard()
-      .then(setSummary)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
-
-  const fetchCategories = useCallback(() => {
-    financeService.getCategories().then(cats => setCategories(cats || [])).catch(console.error);
-  }, []);
 
   const handleCatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!catName) return;
-    setCatSaving(true);
+
     try {
       if (catEditId) {
         await financeService.updateCategory(catEditId, { name: catName, type: catType, color: catColor, icon: 'plus' });
@@ -230,26 +227,27 @@ export function Dashboard() {
         await financeService.createCategory({ name: catName, type: catType, color: catColor, icon: 'plus' });
         toast.success('Categoria criada!');
       }
-      setCatEditId(null);
-      setCatName('');
-      fetchCategories();
-    } catch { toast.error('Erro ao salvar categoria'); } finally { setCatSaving(false); }
+      
+      startTransition(() => {
+        setCatEditId(null);
+        setCatName('');
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      });
+    } catch { toast.error('Erro ao salvar categoria'); }
   };
 
   const handleDeleteCategory = async (id: string) => {
     if (!confirm('Deseja realmente apagar esta categoria? Transações atreladas ficarão sem categoria.')) return;
     try {
       await financeService.deleteCategory(id);
-      toast.success('Categoria removida');
-      fetchCategories();
+      startTransition(() => {
+        toast.success('Categoria removida');
+        queryClient.invalidateQueries({ queryKey: ['categories'] });
+      });
     } catch {
       toast.error('Erro ao remover (pode ser padrão ou haver problemas de rede)');
     }
   };
-
-  useEffect(() => {
-    fetchDashboard();
-  }, [fetchDashboard]);
 
 
   // Fallback to mock data while loading or if no data
@@ -314,8 +312,8 @@ export function Dashboard() {
             </div>
             <div className="flex gap-2 pt-1">
               <Button type="button" variant="outline" className="flex-1" onClick={() => setTxDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={txSaving} className={`flex-1 ${txType === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                {txSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              <Button type="submit" disabled={isPending} className={`flex-1 ${txType === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
             </div>
           </form>
@@ -362,8 +360,8 @@ export function Dashboard() {
                   </div>
                 </div>
              </div>
-             <Button type="submit" disabled={catSaving} className="w-full">
-                {catSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : catEditId ? 'Salvar Alterações' : 'Criar Categoria'}
+             <Button type="submit" disabled={isPending} className="w-full">
+                {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : catEditId ? 'Salvar Alterações' : 'Criar Categoria'}
              </Button>
           </form>
 
@@ -657,7 +655,7 @@ export function Dashboard() {
               <FolderOpen className="h-4 w-4 mr-2 text-primary" />
               Gerenciar Categorias
             </Button>
-            <Button variant="secondary" className="w-full justify-start" onClick={fetchDashboard}>
+            <Button variant="secondary" className="w-full justify-start" onClick={() => startTransition(() => { queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] }); })}>
               <TrendingUp className="h-4 w-4 mr-2" />
               Atualizar Visão
             </Button>

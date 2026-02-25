@@ -59,16 +59,24 @@ func (m *mockAIProvider) GenerateInsight(ctx ai.FinancialContext) (*ai.AIInsight
 	}, nil
 }
 
-func (m *mockAIProvider) GenerateFullAnalysis(ctx ai.FinancialContext) ([]*ai.AIInsight, error) {
+func (m *mockAIProvider) GenerateDiagnostic(ctx ai.FinancialContext) (*ai.AIInsight, error) {
 	if m.err != nil {
 		return nil, m.err
 	}
-	if m.insights != nil {
-		return m.insights, nil
+	if m.insight != nil {
+		return m.insight, nil
 	}
-	return []*ai.AIInsight{
-		{ID: uuid.New(), Type: ai.InsightTypeAchievement, Title: "Full Analysis", Content: "You're doing great."},
-	}, nil
+	return &ai.AIInsight{ID: uuid.New(), Type: ai.InsightTypeWarning, Title: "Diagnostic", Content: "Ok"}, nil
+}
+
+func (m *mockAIProvider) GenerateProjection(ctx ai.FinancialContext) (*ai.AIInsight, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	if m.insight != nil {
+		return m.insight, nil
+	}
+	return &ai.AIInsight{ID: uuid.New(), Type: ai.InsightTypeProjection, Title: "Projection", Content: "Ok"}, nil
 }
 
 func newSvc(repo *mockInsightRepo, provider ai.AIProvider) *ai.Service {
@@ -157,31 +165,31 @@ func TestGetInsight_ProPlan_NoRateLimit(t *testing.T) {
 	assert.NotNil(t, insight)
 }
 
-// ─── Full Analysis Tests ──────────────────────────────────────────────────────
+// ─── Diagnostic Tests ─────────────────────────────────────────────────────────
 
-func TestGetFullAnalysis_FreePlan_Blocked(t *testing.T) {
+func TestGetDiagnostic_FreePlan_Blocked(t *testing.T) {
 	repo := &mockInsightRepo{}
 	svc := newSvc(repo, &mockAIProvider{})
 
-	_, err := svc.GetFullAnalysis(uuid.New(), "free", baseCtx("free"))
+	_, err := svc.GetDiagnostic(uuid.New(), "free", baseCtx("free"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "upgrade_required")
 }
 
-func TestGetFullAnalysis_PremiumPlan_Allowed(t *testing.T) {
+func TestGetDiagnostic_PremiumPlan_Allowed(t *testing.T) {
 	repo := &mockInsightRepo{}
 	svc := newSvc(repo, &mockAIProvider{})
 
-	insights, err := svc.GetFullAnalysis(uuid.New(), "premium", baseCtx("premium"))
+	insight, err := svc.GetDiagnostic(uuid.New(), "premium", baseCtx("premium"))
 	require.NoError(t, err)
-	assert.NotEmpty(t, insights)
+	assert.NotNil(t, insight)
 }
 
-func TestGetFullAnalysis_ProPlan_Allowed(t *testing.T) {
+func TestGetProjection_ProPlan_Allowed(t *testing.T) {
 	repo := &mockInsightRepo{}
 	svc := newSvc(repo, &mockAIProvider{})
 
-	insights, err := svc.GetFullAnalysis(uuid.New(), "pro", baseCtx("pro"))
+	insight, err := svc.GetProjection(uuid.New(), "pro", baseCtx("pro"))
 	require.NoError(t, err)
-	assert.NotEmpty(t, insights)
+	assert.NotNil(t, insight)
 }

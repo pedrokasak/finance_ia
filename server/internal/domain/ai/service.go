@@ -77,28 +77,50 @@ func (s *Service) GetInsight(userID uuid.UUID, plan string, ctx FinancialContext
 	return insight, nil
 }
 
-// GetFullAnalysis is only available for premium and pro plans
-func (s *Service) GetFullAnalysis(userID uuid.UUID, plan string, ctx FinancialContext) ([]*AIInsight, error) {
+// GetDiagnostic is available for premium and pro plans
+func (s *Service) GetDiagnostic(userID uuid.UUID, plan string, ctx FinancialContext) (*AIInsight, error) {
 	if plan == "free" {
-		return nil, errors.New("upgrade_required: full analysis requires Premium or Pro plan")
+		return nil, errors.New("upgrade_required: diagnostic requires Premium or Pro plan")
 	}
 
 	ctx.Plan = plan
 	ctx.Period = time.Now().Format("2006-01")
 
-	insights, err := s.provider.GenerateFullAnalysis(ctx)
+	insight, err := s.provider.GenerateDiagnostic(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, insight := range insights {
-		insight.UserID = userID
-		insight.Period = ctx.Period
-		insight.Plan = plan
-		insight.GeneratedAt = time.Now()
-		insight.ExpiresAt = time.Now().Add(24 * time.Hour)
-		_ = s.insightRepo.Save(insight)
+	insight.UserID = userID
+	insight.Period = ctx.Period
+	insight.Plan = plan
+	insight.GeneratedAt = time.Now()
+	insight.ExpiresAt = time.Now().Add(24 * time.Hour)
+	_ = s.insightRepo.Save(insight)
+
+	return insight, nil
+}
+
+// GetProjection is available for premium and pro plans
+func (s *Service) GetProjection(userID uuid.UUID, plan string, ctx FinancialContext) (*AIInsight, error) {
+	if plan == "free" {
+		return nil, errors.New("upgrade_required: projection requires Premium or Pro plan")
 	}
 
-	return insights, nil
+	ctx.Plan = plan
+	ctx.Period = time.Now().Format("2006-01")
+
+	insight, err := s.provider.GenerateProjection(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	insight.UserID = userID
+	insight.Period = ctx.Period
+	insight.Plan = plan
+	insight.GeneratedAt = time.Now()
+	insight.ExpiresAt = time.Now().Add(24 * time.Hour)
+	_ = s.insightRepo.Save(insight)
+
+	return insight, nil
 }

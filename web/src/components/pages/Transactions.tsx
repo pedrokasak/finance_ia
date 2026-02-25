@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useTransition } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PlusCircle, Search, TrendingUp, TrendingDown, Calendar, Loader2, Trash2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
-import financeService, { Transaction, Category } from '@/services/financeService';
+import financeService, { Transaction } from '@/services/financeService';
 
 type TxType = 'income' | 'expense';
 
@@ -31,38 +32,35 @@ const emptyForm = (): FormState => ({
 });
 
 export function Transactions() {
+  const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
-  const [submitting, setSubmitting] = useState(false);
-
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [totalIncome, setTotalIncome] = useState(0);
-  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data: pageData, isPending: isQueryPending } = useQuery({
+    queryKey: ['transactionsPage'],
+    queryFn: async () => {
       const [txRes, catRes, dashRes] = await Promise.all([
         financeService.listTransactions({ limit: 50 }),
         financeService.getCategories(),
         financeService.getDashboard(),
       ]);
-      setTransactions(txRes.data || []);
-      setCategories(catRes || []);
-      setTotalIncome(dashRes.total_income || 0);
-      setTotalExpenses(dashRes.total_expenses || 0);
-    } catch {
-      toast.error('Erro ao carregar transações');
-    } finally {
-      setLoading(false);
+      return {
+        transactions: txRes.data || [],
+        categories: catRes || [],
+        totalIncome: dashRes.total_income || 0,
+        totalExpenses: dashRes.total_expenses || 0,
+      };
     }
-  }, []);
+  });
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const transactions = pageData?.transactions || [];
+  const categories = pageData?.categories || [];
+  const totalIncome = pageData?.totalIncome || 0;
+  const totalExpenses = pageData?.totalExpenses || 0;
+  const loading = isPending || isQueryPending;
 
   const filteredCategories = categories.filter(
     (c) => c.type === (form.type === 'income' ? 'income' : 'expense')
@@ -96,7 +94,7 @@ export function Transactions() {
       toast.error('Valor inválido');
       return;
     }
-    setSubmitting(true);
+    
     try {
       const payload = {
         type: form.type,
@@ -108,30 +106,37 @@ export function Transactions() {
 
       if (editingId) {
         await financeService.updateTransaction(editingId, payload);
-        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} atualizada!`);
       } else {
         await financeService.createTransaction(payload);
-        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
       }
 
-      setDialogOpen(false);
-      setEditingId(null);
-      setForm(emptyForm());
-      fetchData();
+      startTransition(() => {
+        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} ${editingId ? 'atualizada' : 'adicionada'}!`);
+        setDialogOpen(false);
+        setEditingId(null);
+        setForm(emptyForm());
+        queryClient.invalidateQueries({ queryKey: ['transactionsPage'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      });
     } catch {
-      toast.error(editingId ? 'Erro ao atualizar transação' : 'Erro ao salvar transação');
-    } finally {
-      setSubmitting(false);
+      startTransition(() => {
+        toast.error(editingId ? 'Erro ao atualizar transação' : 'Erro ao salvar transação');
+      });
     }
   };
 
   const handleDelete = async (id: string) => {
     try {
       await financeService.deleteTransaction(id);
-      toast.success('Transação removida');
-      setTransactions((prev) => prev.filter((tx) => tx.id !== id));
+      startTransition(() => {
+        toast.success('Transação removida');
+        queryClient.invalidateQueries({ queryKey: ['transactionsPage'] });
+        queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      });
     } catch {
-      toast.error('Erro ao remover transação');
+      startTransition(() => {
+        toast.error('Erro ao remover transação');
+      });
     }
   };
 
@@ -318,9 +323,9 @@ export function Transactions() {
               <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting}
-                className={`flex-1 ${form.type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              <Button type="submit" disabled={isPending}>
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isPending ? 'Salvando...' : 'Salvar Transação'}
               </Button>
             </div>
           </form>

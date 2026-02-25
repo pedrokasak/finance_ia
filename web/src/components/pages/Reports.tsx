@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { api } from '@/api/client';
+import { Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,34 +38,64 @@ import {
 } from 'recharts';
 import { CustomTooltip, PieTooltip, BarTooltip } from '@/components/ui/custom-tooltip';
 
-const monthlyTrends = [
-  { month: 'Jan', receitas: 4500, despesas: 3200, economia: 1300 },
-  { month: 'Fev', receitas: 4800, despesas: 3100, economia: 1700 },
-  { month: 'Mar', receitas: 5200, despesas: 3800, economia: 1400 },
-  { month: 'Abr', receitas: 4900, despesas: 3600, economia: 1300 },
-  { month: 'Mai', receitas: 5500, despesas: 4200, economia: 1300 },
-  { month: 'Jun', receitas: 5800, despesas: 4100, economia: 1700 },
-];
-
-const categoryComparison = [
-  { category: 'Alimentação', atual: 1200, anterior: 1100, meta: 1000 },
-  { category: 'Transporte', atual: 800, anterior: 850, meta: 700 },
-  { category: 'Saúde', atual: 600, anterior: 400, meta: 500 },
-  { category: 'Lazer', atual: 400, anterior: 300, meta: 350 },
-  { category: 'Casa', atual: 300, anterior: 280, meta: 250 },
-];
-
-const expenseDistribution = [
-  { name: 'Alimentação', value: 35, color: '#3B82F6', total: 100 },
-  { name: 'Transporte', value: 25, color: '#10B981', total: 100 },
-  { name: 'Saúde', value: 18, color: '#F59E0B', total: 100 },
-  { name: 'Lazer', value: 12, color: '#EF4444', total: 100 },
-  { name: 'Outros', value: 10, color: '#8B5CF6', total: 100 },
-];
+import { useQuery } from '@tanstack/react-query';
 
 export function Reports() {
   const [selectedPeriod, setSelectedPeriod] = useState('thisMonth');
   const [reportType, setReportType] = useState('overview');
+
+  const { data: reportsData, isPending: isQueryPending } = useQuery({
+    queryKey: ['reportsData', selectedPeriod],
+    queryFn: async () => {
+      const [dashRes, goalsRes] = await Promise.all([
+        api.get('/finance/dashboard'),
+        api.get('/goals/').catch(() => ({ data: [] }))
+      ]);
+      return {
+        summary: dashRes.data,
+        goals: dashRes.data?.goals || goalsRes.data || []
+      };
+    }
+  });
+
+  const loading = isQueryPending;
+  const summary = reportsData?.summary || null;
+  const goals = reportsData?.goals || [];
+
+  if (loading) {
+    return (
+      <div className="flex h-64 w-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Mapeamentos de dados pro Recharts e Interface
+  const monthlyTrends = summary?.monthly_trend?.map((t: { month: string; income: number; expenses: number }) => ({
+    month: t.month,
+    receitas: t.income,
+    despesas: t.expenses,
+    economia: t.income - t.expenses,
+  })) || [];
+
+  const expenseDistribution = summary?.category_breakdown?.map((c: { category_name: string; percentage: number; color?: string; total: number }) => ({
+    name: c.category_name,
+    value: c.percentage,
+    color: c.color || '#3B82F6',
+    total: c.total,
+  })) || [];
+
+  const categoryComparison = summary?.category_breakdown?.map((c: { category_name: string; total: number }) => ({
+    category: c.category_name,
+    atual: c.total,
+    anterior: 0, 
+    meta: c.total * 1.1, 
+  })) || [];
+
+  const totalIncome = summary?.total_income || 0;
+  const totalExpenses = summary?.total_expenses || 0;
+  const totalSavings = totalIncome - totalExpenses;
+  const savingsRate = summary?.savings_rate || 0;
 
   return (
     <div className="space-y-6">
@@ -110,10 +142,12 @@ export function Reports() {
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">R$ 32.400</div>
+            <div className="text-2xl font-bold text-green-600">
+              R$ {totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
               <TrendingUp className="h-3 w-3 text-green-500" />
-              <span>+12% vs período anterior</span>
+              <span>Em relação ao período selecionado</span>
             </div>
           </CardContent>
         </Card>
@@ -124,10 +158,12 @@ export function Reports() {
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">R$ 22.800</div>
+            <div className="text-2xl font-bold text-red-600">
+              R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <TrendingDown className="h-3 w-3 text-green-500" />
-              <span>-5% vs período anterior</span>
+              <TrendingDown className="h-3 w-3 text-red-500" />
+              <span>Em relação ao período selecionado</span>
             </div>
           </CardContent>
         </Card>
@@ -138,10 +174,12 @@ export function Reports() {
             <Target className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">R$ 9.600</div>
+            <div className="text-2xl font-bold text-blue-600">
+              R$ {totalSavings.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span>+18% vs período anterior</span>
+              <TrendingUp className="h-3 w-3 text-blue-500" />
+              <span>Saldo final do período</span>
             </div>
           </CardContent>
         </Card>
@@ -152,10 +190,10 @@ export function Reports() {
             <PieChart className="h-4 w-4 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">29.6%</div>
+            <div className="text-2xl font-bold text-purple-600">{savingsRate.toFixed(1)}%</div>
             <div className="flex items-center space-x-2 text-xs text-muted-foreground">
-              <TrendingUp className="h-3 w-3 text-green-500" />
-              <span>+2.1% vs período anterior</span>
+              <TrendingUp className="h-3 w-3 text-purple-500" />
+              <span>Ideal acima de 20%</span>
             </div>
           </CardContent>
         </Card>
@@ -227,7 +265,7 @@ export function Reports() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {expenseDistribution.map((entry, index) => (
+                      {expenseDistribution.map((entry: { name: string; value: number; color?: string; total: number }, index: number) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -235,7 +273,7 @@ export function Reports() {
                   </RechartsPieChart>
                 </ResponsiveContainer>
                 <div className="grid grid-cols-2 gap-2 mt-4">
-                  {expenseDistribution.map((item, index) => (
+                  {expenseDistribution.map((item: { name: string; color?: string; value: number; total: number }, index: number) => (
                     <div key={index} className="flex items-center space-x-2 text-sm">
                       <div 
                         className="w-3 h-3 rounded-full" 
@@ -303,7 +341,7 @@ export function Reports() {
           </Card>
 
           <div className="grid gap-4">
-            {categoryComparison.map((category, index) => (
+            {categoryComparison.map((category: { category: string; atual: number; anterior: number; meta: number }, index: number) => (
               <Card key={index}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
@@ -347,34 +385,38 @@ export function Reports() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {[
-                  { name: 'Reserva de Emergência', current: 8500, target: 15000, deadline: '2024-12-31' },
-                  { name: 'Viagem Europa', current: 2800, target: 5000, deadline: '2024-07-01' },
-                  { name: 'Novo Carro', current: 12000, target: 25000, deadline: '2025-06-01' },
-                ].map((goal, index) => {
-                  const progress = (goal.current / goal.target) * 100;
-                  return (
-                    <div key={index} className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{goal.name}</span>
-                        <Badge variant="outline">
-                          {new Date(goal.deadline).toLocaleDateString('pt-BR')}
-                        </Badge>
+                {goals.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <p>Você ainda não tem metas criadas.</p>
+                  </div>
+                ) : (
+                  goals.map((goal: { id: string; name: string; current_amount: number; target_amount: number; deadline: string; color?: string }, index: number) => {
+                    const progress = goal.target_amount ? (goal.current_amount / goal.target_amount) * 100 : 0;
+                    return (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium">{goal.deadline || goal.name}</span>
+                          <Badge variant="outline">
+                            {goal.deadline 
+                              ? new Date(goal.deadline).toLocaleDateString('pt-BR') 
+                              : 'Sem prazo'}
+                          </Badge>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all"
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>R$ {(goal.current_amount || 0).toLocaleString('pt-BR')}</span>
+                          <span>{progress.toFixed(1)}%</span>
+                          <span>R$ {(goal.target_amount || 0).toLocaleString('pt-BR')}</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 dark:bg-gray-700">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>R$ {goal.current.toLocaleString('pt-BR')}</span>
-                        <span>{progress.toFixed(1)}%</span>
-                        <span>R$ {goal.target.toLocaleString('pt-BR')}</span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })
+                )}
               </CardContent>
             </Card>
 
