@@ -2,6 +2,14 @@
 
 This project is a web application for personal finance management, that allows users to create an account, login and see their financial reports. The application is built using Next.js, a popular React framework, and uses a PostgreSQL database to store user data.
 
+investment-portfolio-platform
+│
+├ backend-api (NestJS)
+├ worker-service (RabbitMQ)
+├ frontend (React)
+├ docker-compose
+└ architecture.md
+
 ## Stack
 
 The stack used in this project is:
