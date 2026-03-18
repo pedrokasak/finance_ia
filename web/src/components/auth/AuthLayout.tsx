@@ -1,5 +1,5 @@
-import React from 'react';
-import { TrendingUp } from 'lucide-react';
+import React from "react";
+import { TrendingUp } from "lucide-react";
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -30,9 +30,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               {title}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              {subtitle}
-            </p>
+            <p className="text-gray-600 dark:text-gray-400">{subtitle}</p>
           </div>
 
           {children}

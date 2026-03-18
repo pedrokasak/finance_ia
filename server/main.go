@@ -9,6 +9,7 @@ import (
 	"finance-ia/internal/domain/auth"
 	"finance-ia/internal/domain/email"
 	"finance-ia/internal/domain/finance"
+	goalDomain "finance-ia/internal/domain/goal"
 	subDomain "finance-ia/internal/domain/subscription"
 	"finance-ia/internal/domain/user"
 	infraAI "finance-ia/internal/infrastructure/ai"
@@ -16,12 +17,14 @@ import (
 	infraauth "finance-ia/internal/infrastructure/database/auth"
 	infraEmailRepo "finance-ia/internal/infrastructure/database/email"
 	infraFinance "finance-ia/internal/infrastructure/database/finance"
+	infraGoalRepo "finance-ia/internal/infrastructure/database/goal"
 	infraSubRepo "finance-ia/internal/infrastructure/database/subscription"
 	infrauser "finance-ia/internal/infrastructure/database/user"
 	stripeAdapter "finance-ia/internal/infrastructure/payment/stripe"
 	aiHandlers "finance-ia/internal/interfaces/handlers/ai"
 	authHandlers "finance-ia/internal/interfaces/handlers/auth"
 	financeHandlers "finance-ia/internal/interfaces/handlers/finance"
+	goalHandlers "finance-ia/internal/interfaces/handlers/goal"
 	subHandlers "finance-ia/internal/interfaces/handlers/subscription"
 	useHandlers "finance-ia/internal/interfaces/handlers/user"
 	"finance-ia/internal/router"
@@ -54,7 +57,7 @@ func main() {
 	userRepo := infrauser.NewUserRepository(db)
 	authRepo := infraauth.NewAuthRepository(db)
 	tokenRepo := infraEmailRepo.NewTokenRepository(db)
-	db.AutoMigrate(&infraEmailRepo.PasswordResetToken{}, &finance.FinancialMethod{})
+	_ = db.AutoMigrate(&infraEmailRepo.PasswordResetToken{}, &finance.FinancialMethod{})
 
 	emailService := email.NewSMTPService()
 	userService := user.NewService(userRepo)
@@ -93,12 +96,12 @@ func main() {
 	insightRepo := infraAIRepo.NewInsightRepository(db)
 
 	var aiProvider ai.AIProvider
-	geminiProvider, err := infraAI.NewGeminiProvider()
+	groqProvider, err := infraAI.NewGroqProvider()
 	if err != nil {
-		log.Printf("Warning: Gemini AI unavailable (%v) — AI features will return error", err)
+		log.Printf("Warning: Groq AI unavailable (%v) — AI features will return error", err)
 		aiProvider = nil
 	} else {
-		aiProvider = geminiProvider
+		aiProvider = groqProvider
 	}
 
 	var aiService *ai.Service
@@ -108,7 +111,7 @@ func main() {
 
 	var aiHandler *aiHandlers.AIHandler
 	if aiService != nil {
-		aiHandler = aiHandlers.NewAIHandler(aiService, financeService)
+		aiHandler = aiHandlers.NewAIHandler(aiService, financeService, userService)
 	}
 
 	// ────────────────────────────────────
@@ -137,6 +140,16 @@ func main() {
 	_ = subDomain.GetPlanFeatures("free") // ensure package is used
 
 	// ────────────────────────────────────
+	// Goal domain
+	// ────────────────────────────────────
+	goalRepo := infraGoalRepo.NewPostgresGoalRepository(db)
+	if err := db.AutoMigrate(&goalDomain.Goal{}); err != nil {
+		log.Printf("Warning: failed to migrate Goal table: %v", err)
+	}
+	goalService := goalDomain.NewService(goalRepo)
+	goalHandler := goalHandlers.NewGoalHandler(goalService)
+
+	// ────────────────────────────────────
 	// Router
 	// ────────────────────────────────────
 	registrars := []router.RouteRegistrar{
@@ -145,6 +158,7 @@ func main() {
 		financeHandler,
 		subscriptionHandler,
 		planHandler,
+		goalHandler,
 	}
 
 	if aiHandler != nil {
@@ -167,6 +181,7 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 			Description:          "Perfeito para começar",
 			PriceMonthly:         0,
 			PriceYearly:          0,
+			StripeProductID:      getEnv("STRIPE_PRODUCT_FREE"),
 			StripePriceIDMonthly: "",
 			StripePriceIDYearly:  "",
 			MaxTransactions:      100,
@@ -183,10 +198,11 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 		},
 		{
 			Slug:                 "pro",
-			Name: "Pro",
+			Name:                 "Pro",
 			Description:          "Ideal para controle avançado",
 			PriceMonthly:         29.90,
 			PriceYearly:          299.00,
+			StripeProductID:      getEnv("STRIPE_PRODUCT_PRO"),
 			StripePriceIDMonthly: getEnv("STRIPE_PRICE_PRO"),
 			StripePriceIDYearly:  getEnv("STRIPE_PRICE_PRO_YEARLY"),
 			MaxTransactions:      -1,
@@ -206,10 +222,11 @@ func seedPlans(repo *infraSubRepo.PlanRepository) error {
 		},
 		{
 			Slug:                 "premium",
-			Name: "Premium",
+			Name:                 "Premium",
 			Description:          "Máximo controle financeiro com IA",
 			PriceMonthly:         49.90,
 			PriceYearly:          499.00,
+			StripeProductID:      getEnv("STRIPE_PRODUCT_PREMIUM"),
 			StripePriceIDMonthly: getEnv("STRIPE_PRICE_PREMIUM"),
 			StripePriceIDYearly:  getEnv("STRIPE_PRICE_PREMIUM_YEARLY"),
 			MaxTransactions:      -1,

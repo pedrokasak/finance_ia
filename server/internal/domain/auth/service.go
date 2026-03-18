@@ -274,7 +274,6 @@ func (s *Service) ResetPassword(token, newPassword string) error {
 	if err != nil {
 		return errors.New("invalid user ID in token")
 	}
-	s.repo.FindByID(userID)
 
 	// Busca o usuário
 	user, err := s.repo.FindByID(userID)

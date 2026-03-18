@@ -1,5 +1,5 @@
-import { useCallback, useReducer, useRef } from 'react';
-import { authenticationService } from '../services/Authentication';
+import { useCallback, useReducer, useRef } from "react";
+import { authenticationService } from "../services/Authentication";
 
 interface AuthenticationResponse {
   email: string;
@@ -36,23 +36,23 @@ interface AuthState {
 }
 
 type AuthAction =
-  | { type: 'AUTH_START' }
-  | { type: 'AUTH_SUCCESS'; payload: AuthenticationResponse }
-  | { type: 'AUTH_ERROR'; payload: string }
-  | { type: 'AUTH_RESET' }
-  | { type: 'LOGOUT' };
+  | { type: "AUTH_START" }
+  | { type: "AUTH_SUCCESS"; payload: AuthenticationResponse }
+  | { type: "AUTH_ERROR"; payload: string }
+  | { type: "AUTH_RESET" }
+  | { type: "LOGOUT" };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
-    case 'AUTH_START':
+    case "AUTH_START":
       return { ...state, loading: true, error: null };
-    case 'AUTH_SUCCESS':
+    case "AUTH_SUCCESS":
       return { user: action.payload, loading: false, error: null };
-    case 'AUTH_ERROR':
+    case "AUTH_ERROR":
       return { ...state, loading: false, error: action.payload };
-    case 'AUTH_RESET':
+    case "AUTH_RESET":
       return { ...state, loading: false, error: null };
-    case 'LOGOUT':
+    case "LOGOUT":
       return { user: null, loading: false, error: null };
     default:
       return state;
@@ -82,20 +82,24 @@ const useAuth = () => {
 
   const login = useCallback(
     async (email: string, password: string, code?: string) => {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       try {
-        const response = await authenticationService.login({ email, password, code });
+        const response = await authenticationService.login({
+          email,
+          password,
+          code,
+        });
         if (!isUnmountedRef.current) {
           dispatch({
-            type: 'AUTH_SUCCESS',
+            type: "AUTH_SUCCESS",
             payload: response as AuthenticationResponse,
           });
         }
         return response;
       } catch (err) {
-        const message = handleError(err, 'Erro no login');
+        const message = handleError(err, "Erro no login");
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_ERROR', payload: message });
+          dispatch({ type: "AUTH_ERROR", payload: message });
         }
         throw err;
       }
@@ -108,24 +112,24 @@ const useAuth = () => {
       await authenticationService.logout();
     } finally {
       if (!isUnmountedRef.current) {
-        dispatch({ type: 'LOGOUT' });
+        dispatch({ type: "LOGOUT" });
       }
     }
   }, []);
 
   const signup = useCallback(
     async (data: SignupRequest) => {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       try {
         const response = await authenticationService.signup(data);
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_RESET' });
+          dispatch({ type: "AUTH_RESET" });
         }
         return response;
       } catch (err) {
-        const message = handleError(err, 'Erro ao criar conta');
+        const message = handleError(err, "Erro ao criar conta");
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_ERROR', payload: message });
+          dispatch({ type: "AUTH_ERROR", payload: message });
         }
         throw err;
       }
@@ -135,20 +139,20 @@ const useAuth = () => {
 
   const forgotPassword = useCallback(
     async (email: string) => {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       try {
         const response = await authenticationService.forgotPassword({ email });
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_RESET' });
+          dispatch({ type: "AUTH_RESET" });
         }
         return response;
       } catch (err) {
         const message = handleError(
           err,
-          'Erro ao solicitar redefinição de senha',
+          "Erro ao solicitar redefinição de senha",
         );
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_ERROR', payload: message });
+          dispatch({ type: "AUTH_ERROR", payload: message });
         }
         throw err;
       }
@@ -158,17 +162,17 @@ const useAuth = () => {
 
   const resetPassword = useCallback(
     async (data: ResetPasswordRequest) => {
-      dispatch({ type: 'AUTH_START' });
+      dispatch({ type: "AUTH_START" });
       try {
         const response = await authenticationService.resetPassword(data);
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_RESET' });
+          dispatch({ type: "AUTH_RESET" });
         }
         return response;
       } catch (err) {
-        const message = handleError(err, 'Erro ao redefinir senha');
+        const message = handleError(err, "Erro ao redefinir senha");
         if (!isUnmountedRef.current) {
-          dispatch({ type: 'AUTH_ERROR', payload: message });
+          dispatch({ type: "AUTH_ERROR", payload: message });
         }
         throw err;
       }

@@ -13,6 +13,7 @@ type Plan struct {
 	Description          string        `json:"description"`
 	PriceMonthly         float64       `json:"price_monthly" gorm:"default:0"`
 	PriceYearly          float64       `json:"price_yearly" gorm:"default:0"`
+	StripeProductID      string        `json:"stripe_product_id" gorm:"default:''"`
 	StripePriceIDMonthly string        `json:"stripe_price_id_monthly" gorm:"default:''"`
 	StripePriceIDYearly  string        `json:"stripe_price_id_yearly" gorm:"default:''"`
 	Features             []PlanFeature `json:"features" gorm:"foreignKey:PlanID;constraint:OnDelete:CASCADE"`
@@ -29,12 +30,12 @@ type PlanFeature struct {
 	Description string    `json:"description" gorm:"not null"`
 }
 
-
 // PlanRepository defines the data access contract for plans
 type PlanRepository interface {
 	FindAll() ([]*Plan, error)
 	FindBySlug(slug string) (*Plan, error)
 	FindByID(id uuid.UUID) (*Plan, error)
+	FindByStripePriceID(priceID string) (*Plan, error)
 	Upsert(plan *Plan) error
 	Delete(id uuid.UUID) error
 

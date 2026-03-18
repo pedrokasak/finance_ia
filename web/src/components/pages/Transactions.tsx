@@ -1,18 +1,55 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Search, TrendingUp, TrendingDown, Calendar, Loader2, Trash2, Pencil } from 'lucide-react';
-import { toast } from 'sonner';
-import financeService, { Transaction, Category } from '@/services/financeService';
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  PlusCircle,
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Loader2,
+  Trash2,
+  Pencil,
+} from "lucide-react";
+import { toast } from "sonner";
+import financeService, {
+  Transaction,
+  Category,
+} from "@/services/financeService";
 
-type TxType = 'income' | 'expense';
+type TxType = "income" | "expense";
 
 interface FormState {
   type: TxType;
@@ -23,11 +60,11 @@ interface FormState {
 }
 
 const emptyForm = (): FormState => ({
-  type: 'income',
-  description: '',
-  amount: '',
-  category_id: '',
-  date: new Date().toISOString().split('T')[0],
+  type: "income",
+  description: "",
+  amount: "",
+  category_id: "",
+  date: new Date().toISOString().split("T")[0],
 });
 
 export function Transactions() {
@@ -41,7 +78,7 @@ export function Transactions() {
   const [loading, setLoading] = useState(true);
   const [totalIncome, setTotalIncome] = useState(0);
   const [totalExpenses, setTotalExpenses] = useState(0);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -56,20 +93,22 @@ export function Transactions() {
       setTotalIncome(dashRes.total_income || 0);
       setTotalExpenses(dashRes.total_expenses || 0);
     } catch {
-      toast.error('Erro ao carregar transações');
+      toast.error("Erro ao carregar transações");
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const filteredCategories = categories.filter(
-    (c) => c.type === (form.type === 'income' ? 'income' : 'expense')
+    (c) => c.type === (form.type === "income" ? "income" : "expense"),
   );
 
   const filteredTransactions = transactions.filter((tx) =>
-    tx.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    tx.description?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   const handleOpenDialog = (type: TxType) => {
@@ -84,8 +123,8 @@ export function Transactions() {
       type: tx.type,
       description: tx.description,
       amount: String(tx.amount),
-      category_id: tx.category_id || '',
-      date: tx.date.split('T')[0],
+      category_id: tx.category_id || "",
+      date: tx.date.split("T")[0],
     });
     setDialogOpen(true);
   };
@@ -93,7 +132,7 @@ export function Transactions() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.amount || parseFloat(form.amount) <= 0) {
-      toast.error('Valor inválido');
+      toast.error("Valor inválido");
       return;
     }
     setSubmitting(true);
@@ -108,10 +147,14 @@ export function Transactions() {
 
       if (editingId) {
         await financeService.updateTransaction(editingId, payload);
-        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} atualizada!`);
+        toast.success(
+          `${form.type === "income" ? "Receita" : "Despesa"} atualizada!`,
+        );
       } else {
         await financeService.createTransaction(payload);
-        toast.success(`${form.type === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
+        toast.success(
+          `${form.type === "income" ? "Receita" : "Despesa"} adicionada!`,
+        );
       }
 
       setDialogOpen(false);
@@ -119,7 +162,9 @@ export function Transactions() {
       setForm(emptyForm());
       fetchData();
     } catch {
-      toast.error(editingId ? 'Erro ao atualizar transação' : 'Erro ao salvar transação');
+      toast.error(
+        editingId ? "Erro ao atualizar transação" : "Erro ao salvar transação",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -128,10 +173,10 @@ export function Transactions() {
   const handleDelete = async (id: string) => {
     try {
       await financeService.deleteTransaction(id);
-      toast.success('Transação removida');
+      toast.success("Transação removida");
       setTransactions((prev) => prev.filter((tx) => tx.id !== id));
     } catch {
-      toast.error('Erro ao remover transação');
+      toast.error("Erro ao remover transação");
     }
   };
 
@@ -141,29 +186,43 @@ export function Transactions() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Receitas do Mês</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Receitas do Mês
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${totalIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                `R$ ${totalIncome.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+              )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Despesas do Mês</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Despesas do Mês
+            </CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : `R$ ${totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                `R$ ${totalExpenses.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+              )}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total de Transações</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total de Transações
+            </CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -174,7 +233,10 @@ export function Transactions() {
 
       {/* Quick action buttons */}
       <div className="flex gap-3">
-        <Button onClick={() => handleOpenDialog('expense')} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button
+          onClick={() => handleOpenDialog("expense")}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
+        >
           <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
       </div>
@@ -185,9 +247,11 @@ export function Transactions() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Transações</CardTitle>
-              <CardDescription>Gerencie todas suas receitas e despesas</CardDescription>
+              <CardDescription>
+                Gerencie todas suas receitas e despesas
+              </CardDescription>
             </div>
-            <Button onClick={() => handleOpenDialog('income')}>
+            <Button onClick={() => handleOpenDialog("income")}>
               <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
             </Button>
           </div>
@@ -211,8 +275,12 @@ export function Transactions() {
             <div className="text-center py-12 text-muted-foreground">
               <TrendingUp className="h-12 w-12 mx-auto mb-3 opacity-30" />
               <p>Nenhuma transação encontrada.</p>
-              <Button className="mt-4" onClick={() => handleOpenDialog('expense')}>
-                <PlusCircle className="h-4 w-4 mr-2" /> Adicionar primeira transação
+              <Button
+                className="mt-4"
+                onClick={() => handleOpenDialog("expense")}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" /> Adicionar primeira
+                transação
               </Button>
             </div>
           ) : (
@@ -229,26 +297,56 @@ export function Transactions() {
               <TableBody>
                 {filteredTransactions.map((tx) => (
                   <TableRow key={tx.id}>
-                    <TableCell className="font-medium">{tx.description || '—'}</TableCell>
+                    <TableCell className="font-medium">
+                      {tx.description || "—"}
+                    </TableCell>
                     <TableCell>
                       {tx.category ? (
-                        <Badge variant="secondary" style={{ borderColor: tx.category.color }}>
+                        <Badge
+                          variant="secondary"
+                          style={{ borderColor: tx.category.color }}
+                        >
                           {tx.category.name}
                         </Badge>
-                      ) : '—'}
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
-                    <TableCell>{tx.date ? new Date(tx.date).toLocaleDateString('pt-BR') : '—'}</TableCell>
+                    <TableCell>
+                      {tx.date
+                        ? new Date(tx.date).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <span className={tx.type === 'income' ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                        {tx.type === 'income' ? '+' : '-'} R$ {tx.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <span
+                        className={
+                          tx.type === "income"
+                            ? "text-green-600 font-medium"
+                            : "text-red-600 font-medium"
+                        }
+                      >
+                        {tx.type === "income" ? "+" : "-"} R${" "}
+                        {tx.amount.toLocaleString("pt-BR", {
+                          minimumFractionDigits: 2,
+                        })}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleEdit(tx)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => handleEdit(tx)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-red-500" onClick={() => tx.id && handleDelete(tx.id)}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-red-500"
+                          onClick={() => tx.id && handleDelete(tx.id)}
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -262,14 +360,32 @@ export function Transactions() {
       </Card>
 
       {/* New/Edit Transaction Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingId(null); }}>
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingId(null);
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingId ? 'Editar' : 'Nova'} {form.type === 'income' ? 'Receita' : 'Despesa'}</DialogTitle>
-            <DialogDescription>{editingId ? 'Modifique os detalhes desta movimentação.' : 'Adicione uma nova movimentação ao seu controle financeiro.'}</DialogDescription>
+            <DialogTitle>
+              {editingId ? "Editar" : "Nova"}{" "}
+              {form.type === "income" ? "Receita" : "Despesa"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingId
+                ? "Modifique os detalhes desta movimentação."
+                : "Adicione uma nova movimentação ao seu controle financeiro."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <Tabs value={form.type} onValueChange={(v) => setForm({ ...form, type: v as TxType, category_id: '' })}>
+            <Tabs
+              value={form.type}
+              onValueChange={(v) =>
+                setForm({ ...form, type: v as TxType, category_id: "" })
+              }
+            >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="income" className="text-green-600">
                   <TrendingUp className="h-4 w-4 mr-2" /> Receita
@@ -282,26 +398,44 @@ export function Transactions() {
 
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input placeholder="Ex: Salário, Supermercado..." value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })} required />
+              <Input
+                placeholder="Ex: Salário, Supermercado..."
+                value={form.description}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
+                required
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Valor (R$)</Label>
-              <Input type="number" placeholder="0,00" step="0.01" min="0.01" value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
+              <Input
+                type="number"
+                placeholder="0,00"
+                step="0.01"
+                min="0.01"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                required
+              />
             </div>
 
             {filteredCategories.length > 0 && (
               <div className="space-y-2">
                 <Label>Categoria</Label>
-                <Select value={form.category_id} onValueChange={(v) => setForm({ ...form, category_id: v })}>
+                <Select
+                  value={form.category_id}
+                  onValueChange={(v) => setForm({ ...form, category_id: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma categoria" />
                   </SelectTrigger>
                   <SelectContent>
                     {filteredCategories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -310,17 +444,33 @@ export function Transactions() {
 
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input type="date" value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+              <Input
+                type="date"
+                value={form.date}
+                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                required
+              />
             </div>
 
             <div className="flex gap-2 pt-2">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setDialogOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting}
-                className={`flex-1 ${form.type === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className={`flex-1 ${form.type === "income" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Salvar"
+                )}
               </Button>
             </div>
           </form>

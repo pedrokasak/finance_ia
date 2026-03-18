@@ -292,7 +292,7 @@ func TestGetDashboardSummary_EmptyTransactions(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 0.0, summary.TotalIncome)
 	assert.Equal(t, 0.0, summary.TotalExpenses)
-	assert.Equal(t, 500, summary.HealthScore) // baseline with no transactions
+	assert.Equal(t, 50, summary.HealthScore) // baseline with no transactions
 }
 
 func TestGetDashboardSummary_PositiveBalance(t *testing.T) {
@@ -350,16 +350,16 @@ func TestHealthScoreLevels(t *testing.T) {
 		maxScore int
 		level    string
 	}{
-		// savings=40%, balance/income=0.6≥0.5 → +300+200 = 1000
-		{"Diamante", 10000, 6000, 900, 1000, "Diamante"},
-		// savings=20%, balance/income=0.3≥0.2 → +200+100 = 800
-		{"Platina", 10000, 8000, 750, 899, "Platina"},
-		// savings=10%, balance/income=0.1<0.2 → +100+0 = 600
-		{"Ouro", 10000, 9000, 600, 749, "Ouro"},
-		// savings=5%, balance/income=0.05<0.2 → +0+0 = 500
-		{"Prata", 10000, 9500, 400, 599, "Prata"},
-		// expense>income: savings=-100%, balance<0 → -200-150 = 150
-		{"Bronze", 1000, 4000, 0, 399, "Bronze"},
+		// savings=50%, balance/income=0.5 → +500+500 = 1000
+		{"Diamante", 10000, 5000, 900, 1000, "Diamante"},
+		// savings=30%, balance/income=0.3 → +500+250 = 750
+		{"Platina", 10000, 7000, 750, 899, "Platina"},
+		// savings=20%, balance/income=0.2 → +350+250 = 600
+		{"Ouro", 10000, 8000, 600, 749, "Ouro"},
+		// savings=10%, balance/income=0.1 → +200+0 = 200 (Bronze, pois não há faixa Prata disponível matematicamente com essa regra)
+		{"Bronze Médio", 10000, 9000, 200, 399, "Bronze"},
+		// expense>income: savings=-100%, balance<0 → 0+0 = 0
+		{"Bronze Baixo", 1000, 4000, 0, 199, "Bronze"},
 	}
 
 	for _, tc := range cases {

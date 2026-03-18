@@ -1,31 +1,32 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { AuthLayout } from './AuthLayout';
-import { Eye, EyeOff, Mail, Lock, Chrome, Github } from 'lucide-react';
-import { z } from 'zod';
-import { toast } from 'sonner';
-import { errorHandler } from '../../utils/errors';
-import useAuth from '../../hooks/use-auth';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { AuthLayout } from "./AuthLayout";
+import { Eye, EyeOff, Mail, Lock, Chrome, Github } from "lucide-react";
+import { z } from "zod";
+import { toast } from "sonner";
+import { errorHandler } from "../../utils/errors";
+import useAuth from "../../hooks/use-auth";
+import { AuthPage } from "../../types/auth";
 
 interface AuthProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: AuthPage) => void;
 }
 
 const loginSchema = z.object({
-  email: z.string().email({ message: 'Email inválido' }),
+  email: z.string().email({ message: "Email inválido" }),
   password: z
     .string()
-    .min(6, { message: 'A senha deve ter pelo menos 6 caracteres' }),
+    .min(6, { message: "A senha deve ter pelo menos 6 caracteres" }),
 });
 
 export function LoginPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
   const [show2FA, setShow2FA] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
@@ -45,7 +46,7 @@ export function LoginPage({ onNavigate }: AuthProps) {
     if (!validation.success) {
       const fieldErrors: { email?: string; password?: string } = {};
       validation.error.errors.forEach((err) => {
-        const field = err.path[0] as 'email' | 'password';
+        const field = err.path[0] as "email" | "password";
         fieldErrors[field] = err.message;
       });
       setErrors(fieldErrors);
@@ -56,15 +57,16 @@ export function LoginPage({ onNavigate }: AuthProps) {
       const response = await login(email, password, show2FA ? code : undefined);
 
       if (response.success) {
-        toast.success('Login realizado com sucesso!');
-        onNavigate('app');
+        toast.success("Login realizado com sucesso!");
+        onNavigate("app");
       } else {
-        if (response.error === '2fa_required') {
+        if (response.error === "2fa_required") {
           setShow2FA(true);
-          toast.info('Autenticação em duas etapas é necessária');
+          toast.info("Autenticação em duas etapas é necessária");
           return;
         }
-        const message = response.error || 'Falha no login. Verifique suas credenciais';
+        const message =
+          response.error || "Falha no login. Verifique suas credenciais";
         setErrors({ form: message });
         toast.error(message);
       }
@@ -78,7 +80,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
   return (
     <AuthLayout
       title="Bem-vindo de volta!"
-      subtitle="Entre na sua conta para continuar">
+      subtitle="Entre na sua conta para continuar"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Email */}
         <div className="space-y-2">
@@ -112,7 +115,7 @@ export function LoginPage({ onNavigate }: AuthProps) {
             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               id="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -124,7 +127,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               disabled={loading}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50">
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+            >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
@@ -141,9 +145,10 @@ export function LoginPage({ onNavigate }: AuthProps) {
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => onNavigate('forgot-password')}
+            onClick={() => onNavigate("forgot-password")}
             disabled={loading}
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50">
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+          >
             Esqueceu a senha?
           </button>
         </div>
@@ -182,7 +187,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
                 <svg
                   className="h-5 w-5 text-red-400"
                   viewBox="0 0 20 20"
-                  fill="currentColor">
+                  fill="currentColor"
+                >
                   <path
                     fillRule="evenodd"
                     d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
@@ -201,14 +207,15 @@ export function LoginPage({ onNavigate }: AuthProps) {
         <Button
           type="submit"
           className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-          disabled={loading}>
+          disabled={loading}
+        >
           {loading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Entrando...</span>
             </div>
           ) : (
-            'Entrar'
+            "Entrar"
           )}
         </Button>
 
@@ -226,7 +233,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
             type="button"
             variant="outline"
             className="h-12 border-gray-300 hover:bg-gray-50"
-            disabled={loading}>
+            disabled={loading}
+          >
             <Chrome className="h-4 w-4 mr-2" />
             Google
           </Button>
@@ -234,7 +242,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
             type="button"
             variant="outline"
             className="h-12 border-gray-300 hover:bg-gray-50"
-            disabled={loading}>
+            disabled={loading}
+          >
             <Github className="h-4 w-4 mr-2" />
             GitHub
           </Button>
@@ -243,12 +252,13 @@ export function LoginPage({ onNavigate }: AuthProps) {
         {/* Link para Cadastro */}
         <div className="text-center pt-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Não tem uma conta?{' '}
+            Não tem uma conta?{" "}
             <button
               type="button"
-              onClick={() => onNavigate('signup')}
+              onClick={() => onNavigate("signup")}
               disabled={loading}
-              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50">
+              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
+            >
               Criar conta
             </button>
           </p>

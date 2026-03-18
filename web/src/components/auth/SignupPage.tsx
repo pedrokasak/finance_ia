@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Checkbox } from '@/components/ui/checkbox';
-import { AuthLayout } from './AuthLayout';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AuthLayout } from "./AuthLayout";
 import {
   Eye,
   EyeOff,
@@ -14,27 +14,27 @@ import {
   Chrome,
   Github,
   Check,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { AuthProps } from './types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AuthProps } from "./types";
 
 export function SignupPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const passwordRequirements = [
-    { text: 'Pelo menos 8 caracteres', met: formData.password.length >= 8 },
-    { text: 'Uma letra maiúscula', met: /[A-Z]/.test(formData.password) },
-    { text: 'Uma letra minúscula', met: /[a-z]/.test(formData.password) },
-    { text: 'Um número', met: /\d/.test(formData.password) },
+    { text: "Pelo menos 8 caracteres", met: formData.password.length >= 8 },
+    { text: "Uma letra maiúscula", met: /[A-Z]/.test(formData.password) },
+    { text: "Uma letra minúscula", met: /[a-z]/.test(formData.password) },
+    { text: "Um número", met: /\d/.test(formData.password) },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,7 +47,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
     // Simular cadastro
     setTimeout(() => {
       setIsLoading(false);
-      onNavigate('app');
+      onNavigate("app");
     }, 2000);
   };
 
@@ -58,7 +58,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
   return (
     <AuthLayout
       title="Crie sua conta"
-      subtitle="Comece sua jornada financeira hoje">
+      subtitle="Comece sua jornada financeira hoje"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Nome */}
         <div className="space-y-2">
@@ -72,7 +73,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
               type="text"
               placeholder="Seu nome completo"
               value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+              onChange={(e) => handleInputChange("name", e.target.value)}
               className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               required
             />
@@ -91,7 +92,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
               type="email"
               placeholder="seu@email.com"
               value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
+              onChange={(e) => handleInputChange("email", e.target.value)}
               className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               required
             />
@@ -107,17 +108,18 @@ export function SignupPage({ onNavigate }: AuthProps) {
             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               id="password"
-              type={showPassword ? 'text' : 'password'}
+              type={showPassword ? "text" : "password"}
               placeholder="••••••••"
               value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
+              onChange={(e) => handleInputChange("password", e.target.value)}
               className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+            >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
@@ -132,18 +134,21 @@ export function SignupPage({ onNavigate }: AuthProps) {
               {passwordRequirements.map((req, index) => (
                 <div
                   key={index}
-                  className="flex items-center space-x-2 text-xs">
+                  className="flex items-center space-x-2 text-xs"
+                >
                   <div
                     className={cn(
-                      'w-4 h-4 rounded-full flex items-center justify-center',
+                      "w-4 h-4 rounded-full flex items-center justify-center",
                       req.met
-                        ? 'bg-green-100 text-green-600'
-                        : 'bg-gray-100 text-gray-400',
-                    )}>
+                        ? "bg-green-100 text-green-600"
+                        : "bg-gray-100 text-gray-400",
+                    )}
+                  >
                     {req.met && <Check className="h-2.5 w-2.5" />}
                   </div>
                   <span
-                    className={req.met ? 'text-green-600' : 'text-gray-500'}>
+                    className={req.met ? "text-green-600" : "text-gray-500"}
+                  >
                     {req.text}
                   </span>
                 </div>
@@ -161,24 +166,25 @@ export function SignupPage({ onNavigate }: AuthProps) {
             <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
             <Input
               id="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
+              type={showConfirmPassword ? "text" : "password"}
               placeholder="••••••••"
               value={formData.confirmPassword}
               onChange={(e) =>
-                handleInputChange('confirmPassword', e.target.value)
+                handleInputChange("confirmPassword", e.target.value)
               }
               className={cn(
-                'pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500',
+                "pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500",
                 formData.confirmPassword &&
                   formData.password !== formData.confirmPassword &&
-                  'border-red-300 focus:border-red-500 focus:ring-red-500',
+                  "border-red-300 focus:border-red-500 focus:ring-red-500",
               )}
               required
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+            >
               {showConfirmPassword ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
@@ -202,17 +208,20 @@ export function SignupPage({ onNavigate }: AuthProps) {
           />
           <Label
             htmlFor="terms"
-            className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-            Eu aceito os{' '}
+            className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
+          >
+            Eu aceito os{" "}
             <a
               href="#"
-              className="text-blue-600 hover:text-blue-700 font-medium">
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
               Termos de Uso
-            </a>{' '}
-            e a{' '}
+            </a>{" "}
+            e a{" "}
             <a
               href="#"
-              className="text-blue-600 hover:text-blue-700 font-medium">
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
               Política de Privacidade
             </a>
           </Label>
@@ -226,14 +235,15 @@ export function SignupPage({ onNavigate }: AuthProps) {
             isLoading ||
             !acceptTerms ||
             formData.password !== formData.confirmPassword
-          }>
+          }
+        >
           {isLoading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Criando conta...</span>
             </div>
           ) : (
-            'Criar conta'
+            "Criar conta"
           )}
         </Button>
 
@@ -250,14 +260,16 @@ export function SignupPage({ onNavigate }: AuthProps) {
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50">
+            className="h-12 border-gray-300 hover:bg-gray-50"
+          >
             <Chrome className="h-4 w-4 mr-2" />
             Google
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="h-12 border-gray-300 hover:bg-gray-50">
+            className="h-12 border-gray-300 hover:bg-gray-50"
+          >
             <Github className="h-4 w-4 mr-2" />
             GitHub
           </Button>
@@ -266,11 +278,12 @@ export function SignupPage({ onNavigate }: AuthProps) {
         {/* Link para Login */}
         <div className="text-center pt-4">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Já tem uma conta?{' '}
+            Já tem uma conta?{" "}
             <button
               type="button"
-              onClick={() => onNavigate('login')}
-              className="text-blue-600 hover:text-blue-700 font-medium">
+              onClick={() => onNavigate("login")}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
               Fazer login
             </button>
           </p>

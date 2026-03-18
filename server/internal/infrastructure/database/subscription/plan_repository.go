@@ -39,6 +39,16 @@ func (r *PlanRepository) FindByID(id uuid.UUID) (*subscription.Plan, error) {
 	return &plan, nil
 }
 
+func (r *PlanRepository) FindByStripePriceID(priceID string) (*subscription.Plan, error) {
+	var plan subscription.Plan
+	if err := r.db.Preload("Features").
+		Where("stripe_price_id_monthly = ? OR stripe_price_id_yearly = ?", priceID, priceID).
+		First(&plan).Error; err != nil {
+		return nil, err
+	}
+	return &plan, nil
+}
+
 func (r *PlanRepository) Upsert(plan *subscription.Plan) error {
 	return r.db.Save(plan).Error
 }

@@ -5,11 +5,14 @@ import {
   ResetPasswordRequest,
   ResetPasswordResponse,
   SignupRequest,
-} from '../types/auth';
+} from "../types/auth";
 
 const baseUrl = import.meta.env.VITE_API_BASE_URL;
 
-export const fetchApi = async <T = unknown>(endpoint: string, options: RequestInit = {}): Promise<T> => {
+export const fetchApi = async <T = unknown>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> => {
   const response = await fetch(`${baseUrl}${endpoint}`, options);
   let data: T;
   try {
@@ -27,9 +30,9 @@ export const fetchApi = async <T = unknown>(endpoint: string, options: RequestIn
 const authentication = {
   login: async (email: string, password: string, code?: string) => {
     const response = await fetchApi(`auth/login`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password, code }),
     });
@@ -38,18 +41,18 @@ const authentication = {
   },
   signup: async (data: SignupRequest) => {
     return await fetchApi<unknown>(`auth/signup/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
   },
   logout: async (): Promise<LogoutResponse> => {
     return await fetchApi<LogoutResponse>(`auth/logout/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
     });
   },
@@ -57,9 +60,9 @@ const authentication = {
     data: ForgotPasswordRequest,
   ): Promise<ForgotPasswordResponse> => {
     return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });
@@ -68,9 +71,9 @@ const authentication = {
     data: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> => {
     return await fetchApi<ResetPasswordResponse>(`auth/reset-password/`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(data),
     });

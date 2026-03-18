@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AuthLayout } from './AuthLayout';
-import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import React, { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { AuthLayout } from "./AuthLayout";
+import { Mail, ArrowLeft, CheckCircle } from "lucide-react";
 
 interface ForgotPasswordPageProps {
-  onNavigate: (page: 'login' | 'signup' | 'forgot-password' | 'app') => void;
+  onNavigate: (page: "login" | "signup" | "forgot-password" | "app") => void;
 }
 
 export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simular envio de email
     setTimeout(() => {
       setIsLoading(false);
@@ -35,19 +35,18 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          
+
           <div className="space-y-2">
             <p className="text-gray-600 dark:text-gray-400">
               Enviamos um link de recuperação para:
             </p>
-            <p className="font-medium text-gray-900 dark:text-white">
-              {email}
-            </p>
+            <p className="font-medium text-gray-900 dark:text-white">{email}</p>
           </div>
 
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Não recebeu o email?</strong> Verifique sua pasta de spam ou lixo eletrônico.
+              <strong>Não recebeu o email?</strong> Verifique sua pasta de spam
+              ou lixo eletrônico.
             </p>
           </div>
 
@@ -59,9 +58,9 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
             >
               Tentar outro email
             </Button>
-            
+
             <Button
-              onClick={() => onNavigate('login')}
+              onClick={() => onNavigate("login")}
               className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
             >
               Voltar ao login
@@ -81,7 +80,7 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
         {/* Botão Voltar */}
         <button
           type="button"
-          onClick={() => onNavigate('login')}
+          onClick={() => onNavigate("login")}
           className="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -110,7 +109,8 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
         {/* Informação adicional */}
         <div className="bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg p-4">
           <p className="text-sm text-gray-600 dark:text-gray-300">
-            Enviaremos um link seguro para redefinir sua senha. O link expira em 1 hora.
+            Enviaremos um link seguro para redefinir sua senha. O link expira em
+            1 hora.
           </p>
         </div>
 
@@ -126,27 +126,27 @@ export function ForgotPasswordPage({ onNavigate }: ForgotPasswordPageProps) {
               <span>Enviando...</span>
             </div>
           ) : (
-            'Enviar link de recuperação'
+            "Enviar link de recuperação"
           )}
         </Button>
 
         {/* Links úteis */}
         <div className="text-center space-y-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Lembrou da senha?{' '}
+            Lembrou da senha?{" "}
             <button
               type="button"
-              onClick={() => onNavigate('login')}
+              onClick={() => onNavigate("login")}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Fazer login
             </button>
           </p>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Não tem uma conta?{' '}
+            Não tem uma conta?{" "}
             <button
               type="button"
-              onClick={() => onNavigate('signup')}
+              onClick={() => onNavigate("signup")}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Criar conta

@@ -92,7 +92,7 @@ func (h *SubscriptionHandler) GetMySubscription(c *gin.Context) {
 
 	// Fallback: read plan from users table (updated by webhooks)
 	plan := "free"
-	if u != nil && string(u.Plan) != "" && string(u.Plan) != "" {
+	if u != nil && string(u.Plan) != "" {
 		plan = string(u.Plan)
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -115,11 +115,14 @@ func (h *SubscriptionHandler) syncSubscriptionFromStripe(u *user.User) (*subscri
 
 	// Use the first active subscription
 	stripeInfo := stripeSubs[0]
-	plan := stripeInfo.Plan
-	if plan == "" || plan == "free" {
-		// Could not resolve plan from price ID (env vars not set) — skip
+
+	// Resolve plan from PriceID
+	planRecord, err := h.planRepo.FindByStripePriceID(stripeInfo.PriceID)
+	if err != nil || planRecord == nil {
+		// Could not resolve plan from price ID
 		return nil, fmt.Errorf("stripe: could not resolve plan slug from price ID %s", stripeInfo.PriceID)
 	}
+	plan := planRecord.Slug
 
 	// Upsert local subscription record
 	sub, _ := h.subscriptionRepo.FindByUserID(u.ID)
@@ -321,8 +324,16 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		if event.SubscriptionID != "" {
 			sub.ExternalID = event.SubscriptionID
 		}
-		if event.Plan != "" {
-			sub.Plan = event.Plan
+		// Resolve Plan Slug from PriceID
+		var planSlug string
+		if event.PriceID != "" {
+			if p, err := h.planRepo.FindByStripePriceID(event.PriceID); err == nil && p != nil {
+				planSlug = p.Slug
+			}
+		}
+
+		if planSlug != "" {
+			sub.Plan = planSlug
 		}
 		sub.Status = subscription.StatusActive
 
@@ -339,15 +350,15 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		}
 
 		// Update the user's plan field so future API calls reflect the new plan
-		if event.Plan != "" {
+		if planSlug != "" {
 			if event.UserID != "" {
 				h.db.Model(&user.User{}).
 					Where("id = ?", event.UserID).
-					Update("plan", event.Plan)
+					Update("plan", planSlug)
 			} else if event.CustomerID != "" {
 				h.db.Model(&user.User{}).
 					Where("stripe_customer_id = ?", event.CustomerID).
-					Update("plan", event.Plan)
+					Update("plan", planSlug)
 			}
 		}
 
@@ -357,25 +368,31 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 			sub = &subscription.Subscription{}
 		}
 		sub.ExternalID = event.SubscriptionID
-		if event.Plan != "" {
-			sub.Plan = event.Plan
+		var planSlug string
+		if event.PriceID != "" {
+			if p, err := h.planRepo.FindByStripePriceID(event.PriceID); err == nil && p != nil {
+				planSlug = p.Slug
+			}
+		}
+		if planSlug != "" {
+			sub.Plan = planSlug
 		}
 		sub.Status = subscription.SubscriptionStatus(event.Status)
 
 		if err := h.subscriptionRepo.Upsert(sub); err != nil {
 			return err
 		}
-		if event.Plan != "" && event.CustomerID != "" {
+		if planSlug != "" && event.CustomerID != "" {
 			h.db.Model(&user.User{}).
 				Where("stripe_customer_id = ?", event.CustomerID).
-				Update("plan", event.Plan)
+				Update("plan", planSlug)
 		}
 
 	case payment.EventSubscriptionDeleted:
 		sub, err := h.subscriptionRepo.FindByExternalID(event.SubscriptionID)
 		if err == nil {
 			sub.Status = subscription.StatusCanceled
-			h.subscriptionRepo.Upsert(sub)
+			_ = h.subscriptionRepo.Upsert(sub)
 		}
 		h.db.Model(&user.User{}).
 			Where("stripe_customer_id = ?", event.CustomerID).
