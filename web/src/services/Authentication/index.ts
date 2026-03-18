@@ -1,12 +1,12 @@
-import { authentication } from '../../api';
-import { AuthenticationInterface } from '../../interfaces/auth';
+import { authentication } from "../../api";
+import { AuthenticationInterface } from "../../interfaces/auth";
 import {
   AuthenticationResponse,
   LoginRequest,
   LogoutResponse,
   SignupRequest,
   SignupResponse,
-} from '../../types/auth';
+} from "../../types/auth";
 
 class AuthenticationService implements AuthenticationInterface {
   async login(data: LoginRequest): Promise<AuthenticationResponse> {
@@ -17,10 +17,10 @@ class AuthenticationService implements AuthenticationInterface {
         data.code,
       )) as { token: string; refreshToken?: string; email: string };
 
-      localStorage.setItem('authToken', response.token);
+      localStorage.setItem("authToken", response.token);
 
       if (response.refreshToken) {
-        localStorage.setItem('refreshToken', response.refreshToken);
+        localStorage.setItem("refreshToken", response.refreshToken);
       }
 
       return {
@@ -31,10 +31,10 @@ class AuthenticationService implements AuthenticationInterface {
       };
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      console.error('Login failed:', error);
+      console.error("Login failed:", error);
       return {
         email: data.email,
-        error: error?.error || 'Falha no login',
+        error: error?.error || "Falha no login",
         success: false,
       };
     }
@@ -53,7 +53,7 @@ class AuthenticationService implements AuthenticationInterface {
     console.log(`Forgot password for email: ${data.email}`);
     return {
       message:
-        'If that email is registered, you will receive a password reset link.',
+        "If that email is registered, you will receive a password reset link.",
     };
   }
   async resetPassword(data: {
@@ -62,7 +62,7 @@ class AuthenticationService implements AuthenticationInterface {
     confirmNewPassword: string;
   }): Promise<{ message: string }> {
     console.log(`Resetting password with token: ${data.token}`);
-    return { message: 'Your password has been successfully reset.' };
+    return { message: "Your password has been successfully reset." };
   }
 }
 

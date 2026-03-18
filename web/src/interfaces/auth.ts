@@ -6,7 +6,7 @@ import {
   LogoutResponse,
   SignupRequest,
   SignupResponse,
-} from '../types/auth';
+} from "../types/auth";
 
 export interface AuthenticationInterface {
   login: (data: LoginRequest) => Promise<AuthenticationResponse>;

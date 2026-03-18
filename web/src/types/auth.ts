@@ -53,4 +53,4 @@ export type ResetPasswordResponse = {
   message: string;
 };
 
-export type AuthPage = 'login' | 'signup' | 'forgot-password' | 'app';
+export type AuthPage = "login" | "signup" | "forgot-password" | "app";

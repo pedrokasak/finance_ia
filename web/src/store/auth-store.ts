@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage, devtools } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist, createJSONStorage, devtools } from "zustand/middleware";
 
 interface AuthenticationResponse {
   email: string;
@@ -39,12 +39,12 @@ export const useAuthStore = create<AuthStore>()(
               isAuthenticated: true,
             },
             false,
-            'auth/setUser',
+            "auth/setUser",
           );
         },
 
         clearAuth: () => {
-          localStorage.removeItem('authToken');
+          localStorage.removeItem("authToken");
           set(
             {
               user: null,
@@ -52,18 +52,18 @@ export const useAuthStore = create<AuthStore>()(
               isAuthenticated: false,
             },
             false,
-            'auth/clearAuth',
+            "auth/clearAuth",
           );
         },
 
         setToken: (token) => {
-          localStorage.setItem('authToken', token);
-          set({ token }, false, 'auth/setToken');
+          localStorage.setItem("authToken", token);
+          set({ token }, false, "auth/setToken");
         },
 
         hydrate: () => {
-          const token = localStorage.getItem('authToken');
-          const storedUser = localStorage.getItem('auth-storage');
+          const token = localStorage.getItem("authToken");
+          const storedUser = localStorage.getItem("auth-storage");
 
           if (token && storedUser) {
             try {
@@ -76,18 +76,18 @@ export const useAuthStore = create<AuthStore>()(
                     isAuthenticated: true,
                   },
                   false,
-                  'auth/hydrate',
+                  "auth/hydrate",
                 );
               }
             } catch (error) {
-              console.error('Error hydrating auth state:', error);
+              console.error("Error hydrating auth state:", error);
               get().clearAuth();
             }
           }
         },
       }),
       {
-        name: 'auth-storage',
+        name: "auth-storage",
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           user: state.user,
@@ -97,8 +97,8 @@ export const useAuthStore = create<AuthStore>()(
       },
     ),
     {
-      name: 'AuthStore',
-      enabled: import.meta.env.VITE_ENV === 'development' ? true : false,
+      name: "AuthStore",
+      enabled: import.meta.env.VITE_ENV === "development" ? true : false,
     },
   ),
 );

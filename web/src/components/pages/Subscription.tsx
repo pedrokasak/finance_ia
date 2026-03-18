@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -13,7 +19,7 @@ import {
   CreditCard,
   Calendar,
   Download,
-  Loader2
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { api } from '@/api/client';
@@ -21,7 +27,7 @@ import { toast } from 'sonner';
 
 // Plan data comes from the backend (GET /subscription/plans)
 interface Plan {
-  id: string;        // same as slug: 'free' | 'pro' | 'premium'
+  id: string; // same as slug: 'free' | 'pro' | 'premium'
   slug: string;
   name: string;
   description: string;
@@ -34,12 +40,19 @@ interface Plan {
 }
 
 // Visual metadata per slug (icon/color cannot come from JSON)
-const planVisuals: Record<string, { icon: React.ElementType; color: string; bgColor: string; popular?: boolean }> = {
+const planVisuals: Record<
+  string,
+  { icon: React.ElementType; color: string; bgColor: string; popular?: boolean }
+> = {
   free: { icon: TrendingUp, color: 'text-gray-600', bgColor: 'bg-gray-100' },
-  pro: { icon: Crown, color: 'text-blue-600', bgColor: 'bg-blue-100', popular: true },
+  pro: {
+    icon: Crown,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-100',
+    popular: true,
+  },
   premium: { icon: Star, color: 'text-purple-600', bgColor: 'bg-purple-100' },
 };
-
 
 interface SubscriptionInfo {
   plan: string;
@@ -58,7 +71,9 @@ interface Invoice {
 }
 
 export function Subscription() {
-  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingInterval, setBillingInterval] = useState<'monthly' | 'yearly'>(
+    'monthly',
+  );
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   // Toast on return from Stripe Checkout
@@ -75,19 +90,19 @@ export function Subscription() {
 
   const { data: subData, isLoading: loadingSub } = useQuery({
     queryKey: ['subscription'],
-    queryFn: () => api.get('/subscription/').then(r => r.data),
+    queryFn: () => api.get('/subscription/').then((r) => r.data),
     staleTime: 1000 * 30, // 30s
   });
 
   const { data: plansData, isLoading: loadingPlans } = useQuery({
     queryKey: ['subscription-plans'],
-    queryFn: () => api.get('/subscription/plans').then(r => r.data),
+    queryFn: () => api.get('/subscription/plans').then((r) => r.data),
     staleTime: 1000 * 60 * 5, // 5min — plans rarely change
   });
 
   const { data: invoicesData } = useQuery({
     queryKey: ['subscription-invoices'],
-    queryFn: () => api.get('/subscription/invoices').then(r => r.data),
+    queryFn: () => api.get('/subscription/invoices').then((r) => r.data),
     staleTime: 1000 * 60, // 1min
   });
 
@@ -103,7 +118,7 @@ export function Subscription() {
   const invoices: Invoice[] = invoicesData?.invoices || invoicesData || [];
 
   const plans: Plan[] = (plansData?.plans || []).map((p: Plan) => ({
-    id: p.slug,      // use slug as id so plan.id === currentPlan works
+    id: p.slug, // use slug as id so plan.id === currentPlan works
     slug: p.slug,
     name: p.name,
     description: p.description,
@@ -117,7 +132,6 @@ export function Subscription() {
 
   const currentPlan = subInfo.plan || 'free';
   const isPaidPlan = currentPlan !== 'free';
-
 
   const handleSubscribe = async (planId: string) => {
     // 'free' plan = no payment needed (downgrade handled via portal)
@@ -138,7 +152,9 @@ export function Subscription() {
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
-      toast.error(err.response?.data?.error || 'Erro ao criar sessão de pagamento');
+      toast.error(
+        err.response?.data?.error || 'Erro ao criar sessão de pagamento',
+      );
     } finally {
       setLoadingPlan(null);
     }
@@ -164,21 +180,31 @@ export function Subscription() {
 
         {/* Toggle de cobrança */}
         <div className="flex items-center justify-center space-x-4">
-          <Label htmlFor="billing-toggle" className={cn(
-            "text-sm font-medium",
-            billingInterval === 'monthly' ? 'text-foreground' : 'text-muted-foreground'
-          )}>
+          <Label
+            htmlFor="billing-toggle"
+            className={cn(
+              'text-sm font-medium',
+              billingInterval === 'monthly'
+                ? 'text-foreground'
+                : 'text-muted-foreground',
+            )}>
             Mensal
           </Label>
           <Switch
             id="billing-toggle"
             checked={billingInterval === 'yearly'}
-            onCheckedChange={(checked) => setBillingInterval(checked ? 'yearly' : 'monthly')}
+            onCheckedChange={(checked) =>
+              setBillingInterval(checked ? 'yearly' : 'monthly')
+            }
           />
-          <Label htmlFor="billing-toggle" className={cn(
-            "text-sm font-medium",
-            billingInterval === 'yearly' ? 'text-foreground' : 'text-muted-foreground'
-          )}>
+          <Label
+            htmlFor="billing-toggle"
+            className={cn(
+              'text-sm font-medium',
+              billingInterval === 'yearly'
+                ? 'text-foreground'
+                : 'text-muted-foreground',
+            )}>
             Anual
           </Label>
           {billingInterval === 'yearly' && (
@@ -197,20 +223,27 @@ export function Subscription() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => {
-            const visuals = planVisuals[plan.slug] ?? { icon: TrendingUp, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+            const visuals = planVisuals[plan.slug] ?? {
+              icon: TrendingUp,
+              color: 'text-gray-600',
+              bgColor: 'bg-gray-100',
+            };
             const Icon = visuals.icon;
-            const isCurrentPlan = plan.id === currentPlan;  // plan.id === slug === currentPlan from API
-            const price = billingInterval === 'yearly' ? plan.price_yearly : plan.price_monthly;
+            const isCurrentPlan = plan.id === currentPlan; // plan.id === slug === currentPlan from API
+            const price =
+              billingInterval === 'yearly'
+                ? plan.price_yearly
+                : plan.price_monthly;
 
             return (
               <Card
                 key={plan.id}
                 className={cn(
-                  "relative transition-all duration-200 hover:shadow-lg",
-                  visuals.popular && "ring-2 ring-blue-500 shadow-lg scale-105",
-                  isCurrentPlan && "bg-blue-50 dark:bg-blue-950 border-blue-200"
-                )}
-              >
+                  'relative transition-all duration-200 hover:shadow-lg',
+                  visuals.popular && 'ring-2 ring-blue-500 shadow-lg scale-105',
+                  isCurrentPlan &&
+                    'bg-blue-50 dark:bg-blue-950 border-blue-200',
+                )}>
                 {visuals.popular && (
                   <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
                     <Badge className="bg-blue-600 text-white px-3 py-1">
@@ -228,8 +261,12 @@ export function Subscription() {
                 )}
 
                 <CardHeader className="text-center space-y-4">
-                  <div className={cn("w-12 h-12 mx-auto rounded-full flex items-center justify-center", visuals.bgColor)}>
-                    <Icon className={cn("h-6 w-6", visuals.color)} />
+                  <div
+                    className={cn(
+                      'w-12 h-12 mx-auto rounded-full flex items-center justify-center',
+                      visuals.bgColor,
+                    )}>
+                    <Icon className={cn('h-6 w-6', visuals.color)} />
                   </div>
 
                   <div>
@@ -248,7 +285,8 @@ export function Subscription() {
                     </div>
                     {billingInterval === 'yearly' && plan.price_monthly > 0 && (
                       <p className="text-sm text-muted-foreground">
-                        ou R$ {plan.price_monthly.toFixed(2).replace('.', ',')}/mês cobrado anualmente
+                        ou R$ {plan.price_monthly.toFixed(2).replace('.', ',')}
+                        /mês cobrado anualmente
                       </p>
                     )}
                   </div>
@@ -257,50 +295,72 @@ export function Subscription() {
                 <CardContent className="space-y-6">
                   {/* Features */}
                   <div className="space-y-3">
-                    {plan.features.map((feature: any, index: number) => {
-                      const text = typeof feature === 'string' ? feature : feature.description;
+                    {plan.features.map((feature, index: number) => {
+                      const text =
+                        typeof feature === 'string'
+                          ? feature
+                          : feature.description;
                       return (
-                      <div key={index} className="flex items-start space-x-3">
-                        <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{text}</span>
-                      </div>
-                    )})}
+                        <div key={index} className="flex items-start space-x-3">
+                          <Check className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm">{text}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   {/* Limitations */}
                   {(plan.limitations ?? []).length > 0 && (
                     <div className="space-y-2 pt-4 border-t">
-                      <p className="text-sm font-medium text-muted-foreground">Limitações:</p>
-                      {(plan.limitations ?? []).map((limitation: any, index: number) => {
-                        const text = typeof limitation === 'string' ? limitation : limitation.description;
-                        return (
-                        <div key={index} className="flex items-start space-x-3">
-                          <div className="w-4 h-4 mt-0.5 flex-shrink-0">
-                            <div className="w-1 h-1 bg-gray-400 rounded-full mx-auto mt-1.5" />
-                          </div>
-                          <span className="text-sm text-muted-foreground">{text}</span>
-                        </div>
-                      )})}
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Limitações:
+                      </p>
+                      {(plan.limitations ?? []).map(
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        (limitation: any, index: number) => {
+                          const text =
+                            typeof limitation === 'string'
+                              ? limitation
+                              : limitation.description;
+                          return (
+                            <div
+                              key={index}
+                              className="flex items-start space-x-3">
+                              <div className="w-4 h-4 mt-0.5 flex-shrink-0">
+                                <div className="w-1 h-1 bg-gray-400 rounded-full mx-auto mt-1.5" />
+                              </div>
+                              <span className="text-sm text-muted-foreground">
+                                {text}
+                              </span>
+                            </div>
+                          );
+                        },
+                      )}
                     </div>
                   )}
 
                   {/* Action Button */}
                   <Button
                     className={cn(
-                      "w-full",
-                      isCurrentPlan && "opacity-50 cursor-not-allowed",
-                      visuals.popular && !isCurrentPlan && "bg-blue-600 hover:bg-blue-700"
+                      'w-full',
+                      isCurrentPlan && 'opacity-50 cursor-not-allowed',
+                      visuals.popular &&
+                        !isCurrentPlan &&
+                        'bg-blue-600 hover:bg-blue-700',
                     )}
                     variant={plan.id === 'free' ? 'outline' : 'default'}
                     disabled={isCurrentPlan || loadingPlan !== null}
-                    onClick={() => handleSubscribe(plan.id)}
-                  >
+                    onClick={() => handleSubscribe(plan.id)}>
                     {loadingPlan === plan.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : isCurrentPlan ? (
                       '✓ Plano Atual'
                     ) : plan.id === 'free' ? (
-                      isPaidPlan ? 'Cancelar Assinatura' : 'Plano Gratuito'
+                      isPaidPlan ? (
+                        'Cancelar Assinatura'
+                      ) : (
+                        'Plano Gratuito'
+                      )
                     ) : currentPlan === 'free' ? (
                       'Fazer Upgrade'
                     ) : (
@@ -328,7 +388,10 @@ export function Subscription() {
           </CardHeader>
           <CardContent className="space-y-4">
             {currentPlan !== 'free' ? (
-              <Button variant="outline" className="w-full" onClick={handleManagePortal}>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleManagePortal}>
                 <CreditCard className="h-4 w-4 mr-2" />
                 Abrir Portal de Gerenciamento
               </Button>
@@ -346,9 +409,7 @@ export function Subscription() {
               <Calendar className="h-5 w-5" />
               <span>Histórico de Cobranças</span>
             </CardTitle>
-            <CardDescription>
-              Suas últimas faturas
-            </CardDescription>
+            <CardDescription>Suas últimas faturas</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {loadingData ? (
@@ -358,7 +419,9 @@ export function Subscription() {
             ) : invoices.length > 0 ? (
               <div className="space-y-3">
                 {invoices.map((invoice) => (
-                  <div key={invoice.id} className="flex items-center justify-between">
+                  <div
+                    key={invoice.id}
+                    className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{invoice.date}</p>
                       <p className="text-sm text-muted-foreground">
@@ -366,12 +429,20 @@ export function Subscription() {
                       </p>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge className={invoice.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                      <Badge
+                        className={
+                          invoice.status === 'paid'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }>
                         {invoice.status === 'paid' ? 'Pago' : invoice.status}
                       </Badge>
                       {invoice.hosted_invoice_url && (
                         <Button variant="ghost" size="sm" asChild>
-                          <a href={invoice.hosted_invoice_url} target="_blank" rel="noreferrer">
+                          <a
+                            href={invoice.hosted_invoice_url}
+                            target="_blank"
+                            rel="noreferrer">
                             <Download className="h-4 w-4" />
                           </a>
                         </Button>
@@ -410,13 +481,48 @@ export function Subscription() {
               </thead>
               <tbody className="divide-y">
                 {[
-                  { name: 'Transações mensais', basic: '100', pro: 'Ilimitadas', premium: 'Ilimitadas' },
-                  { name: 'Categorização automática', basic: '❌', pro: '✅', premium: '✅' },
-                  { name: 'Relatórios avançados', basic: '❌', pro: '✅', premium: '✅' },
-                  { name: 'Exportação de dados', basic: '❌', pro: '✅', premium: '✅' },
-                  { name: 'Análise de IA', basic: '❌', pro: '❌', premium: '✅' },
-                  { name: 'Consultoria automatizada', basic: '❌', pro: '❌', premium: '✅' },
-                  { name: 'Suporte', basic: 'Email', pro: 'Prioritário', premium: '24/7 Chat' },
+                  {
+                    name: 'Transações mensais',
+                    basic: '100',
+                    pro: 'Ilimitadas',
+                    premium: 'Ilimitadas',
+                  },
+                  {
+                    name: 'Categorização automática',
+                    basic: '❌',
+                    pro: '✅',
+                    premium: '✅',
+                  },
+                  {
+                    name: 'Relatórios avançados',
+                    basic: '❌',
+                    pro: '✅',
+                    premium: '✅',
+                  },
+                  {
+                    name: 'Exportação de dados',
+                    basic: '❌',
+                    pro: '✅',
+                    premium: '✅',
+                  },
+                  {
+                    name: 'Análise de IA',
+                    basic: '❌',
+                    pro: '❌',
+                    premium: '✅',
+                  },
+                  {
+                    name: 'Consultoria automatizada',
+                    basic: '❌',
+                    pro: '❌',
+                    premium: '✅',
+                  },
+                  {
+                    name: 'Suporte',
+                    basic: 'Email',
+                    pro: 'Prioritário',
+                    premium: '24/7 Chat',
+                  },
                 ].map((feature, index) => (
                   <tr key={index}>
                     <td className="py-3 pr-4 font-medium">{feature.name}</td>

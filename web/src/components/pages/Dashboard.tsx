@@ -11,8 +11,20 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   TrendingUp,
   TrendingDown,
@@ -43,7 +55,10 @@ import {
   Cell,
 } from 'recharts';
 import { CustomTooltip, PieTooltip } from '@/components/ui/custom-tooltip';
-import financeService, { DashboardSummary, Category } from '@/services/financeService';
+import financeService, {
+  DashboardSummary,
+  Category,
+} from '@/services/financeService';
 import aiService, { AIInsight } from '@/services/aiService';
 import { toast } from 'sonner';
 
@@ -72,13 +87,28 @@ function HealthScoreRing({ score, level }: { score: number; level: string }) {
     <div className="flex flex-col items-center gap-1">
       <div className="relative w-24 h-24">
         <svg className="w-24 h-24 -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r={radius} fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
           <circle
-            cx="50" cy="50" r={radius} fill="none"
-            stroke="currentColor" strokeWidth="8"
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
+            className="text-muted/30"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="8"
             strokeDasharray={`${progress} ${circumference}`}
             strokeLinecap="round"
-            className={cn('transition-all duration-1000', levelColors[level] || 'text-primary')}
+            className={cn(
+              'transition-all duration-1000',
+              levelColors[level] || 'text-primary',
+            )}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -99,7 +129,8 @@ function AIInsightCard({ plan }: { plan?: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    aiService.getInsight()
+    aiService
+      .getInsight()
       .then(setInsight)
       .catch((err) => {
         const msg = err.response?.data?.error || 'Erro ao carregar insight';
@@ -137,7 +168,11 @@ function AIInsightCard({ plan }: { plan?: string }) {
           </div>
         )}
         {insight && !loading && (
-          <div className={cn('rounded-md p-2 border text-xs leading-relaxed', typeStyles[insight.type] || typeStyles.tip)}>
+          <div
+            className={cn(
+              'rounded-md p-2 border text-xs leading-relaxed',
+              typeStyles[insight.type] || typeStyles.tip,
+            )}>
             <p className="font-medium mb-0.5">{insight.title}</p>
             <p>{insight.content}</p>
           </div>
@@ -151,7 +186,9 @@ function AIInsightCard({ plan }: { plan?: string }) {
           </div>
         )}
         {!loading && error && !isRateLimited && !needsUpgrade && (
-          <p className="text-xs text-muted-foreground">Configure sua chave de IA para ver insights personalizados.</p>
+          <p className="text-xs text-muted-foreground">
+            Configure sua chave de IA para ver insights personalizados.
+          </p>
         )}
       </div>
     </div>
@@ -182,40 +219,57 @@ export function Dashboard() {
   const [catColor, setCatColor] = useState('#EF4444');
 
   const openTxDialog = (type: 'income' | 'expense' = 'expense') => {
-    setTxType(type); setTxDesc(''); setTxAmount(''); setTxCatId('');
+    setTxType(type);
+    setTxDesc('');
+    setTxAmount('');
+    setTxCatId('');
     setTxDate(new Date().toISOString().split('T')[0]);
     setTxDialogOpen(true);
   };
 
   const handleTxSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!txAmount || parseFloat(txAmount) <= 0) { toast.error('Valor inválido'); return; }
+    if (!txAmount || parseFloat(txAmount) <= 0) {
+      toast.error('Valor inválido');
+      return;
+    }
     setTxSaving(true);
     try {
-      await financeService.createTransaction({ 
-        type: txType, 
-        amount: parseFloat(txAmount), 
-        description: txDesc, 
-        date: txDate, 
-        category_id: txCatId || undefined 
+      await financeService.createTransaction({
+        type: txType,
+        amount: parseFloat(txAmount),
+        description: txDesc,
+        date: txDate,
+        category_id: txCatId || undefined,
       });
-      toast.success(`${txType === 'income' ? 'Receita' : 'Despesa'} adicionada!`);
+      toast.success(
+        `${txType === 'income' ? 'Receita' : 'Despesa'} adicionada!`,
+      );
       setTxDialogOpen(false);
       fetchDashboard();
-    } catch { toast.error('Erro ao salvar'); } finally { setTxSaving(false); }
+    } catch {
+      toast.error('Erro ao salvar');
+    } finally {
+      setTxSaving(false);
+    }
   };
 
   const fetchDashboard = useCallback(() => {
     setLoading(true);
     fetchCategories();
-    financeService.getDashboard()
+    financeService
+      .getDashboard()
       .then(setSummary)
       .catch(console.error)
       .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchCategories = useCallback(() => {
-    financeService.getCategories().then(cats => setCategories(cats || [])).catch(console.error);
+    financeService
+      .getCategories()
+      .then((cats) => setCategories(cats || []))
+      .catch(console.error);
   }, []);
 
   const handleCatSubmit = async (e: React.FormEvent) => {
@@ -224,33 +278,53 @@ export function Dashboard() {
     setCatSaving(true);
     try {
       if (catEditId) {
-        await financeService.updateCategory(catEditId, { name: catName, type: catType, color: catColor, icon: 'plus' });
+        await financeService.updateCategory(catEditId, {
+          name: catName,
+          type: catType,
+          color: catColor,
+          icon: 'plus',
+        });
         toast.success('Categoria atualizada!');
       } else {
-        await financeService.createCategory({ name: catName, type: catType, color: catColor, icon: 'plus' });
+        await financeService.createCategory({
+          name: catName,
+          type: catType,
+          color: catColor,
+          icon: 'plus',
+        });
         toast.success('Categoria criada!');
       }
       setCatEditId(null);
       setCatName('');
       fetchCategories();
-    } catch { toast.error('Erro ao salvar categoria'); } finally { setCatSaving(false); }
+    } catch {
+      toast.error('Erro ao salvar categoria');
+    } finally {
+      setCatSaving(false);
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    if (!confirm('Deseja realmente apagar esta categoria? Transações atreladas ficarão sem categoria.')) return;
+    if (
+      !confirm(
+        'Deseja realmente apagar esta categoria? Transações atreladas ficarão sem categoria.',
+      )
+    )
+      return;
     try {
       await financeService.deleteCategory(id);
       toast.success('Categoria removida');
       fetchCategories();
     } catch {
-      toast.error('Erro ao remover (pode ser padrão ou haver problemas de rede)');
+      toast.error(
+        'Erro ao remover (pode ser padrão ou haver problemas de rede)',
+      );
     }
   };
 
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
-
 
   // Fallback to mock data while loading or if no data
   const totalIncome = summary?.total_income ?? 0;
@@ -264,8 +338,18 @@ export function Dashboard() {
   const daysUntilNegative = summary?.days_until_negative;
   const budget = summary?.budget;
 
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4'];
-  const filteredCats = categories.filter((c) => c.type === (txType === 'income' ? 'income' : 'expense'));
+  const COLORS = [
+    '#3B82F6',
+    '#10B981',
+    '#F59E0B',
+    '#EF4444',
+    '#8B5CF6',
+    '#EC4899',
+    '#06B6D4',
+  ];
+  const filteredCats = categories.filter(
+    (c) => c.type === (txType === 'income' ? 'income' : 'expense'),
+  );
 
   return (
     <div className="space-y-6">
@@ -273,11 +357,20 @@ export function Dashboard() {
       <Dialog open={txDialogOpen} onOpenChange={setTxDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Nova {txType === 'income' ? 'Receita' : 'Despesa'}</DialogTitle>
-            <DialogDescription>Adicione uma movimentação ao seu controle financeiro.</DialogDescription>
+            <DialogTitle>
+              Nova {txType === 'income' ? 'Receita' : 'Despesa'}
+            </DialogTitle>
+            <DialogDescription>
+              Adicione uma movimentação ao seu controle financeiro.
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleTxSubmit} className="space-y-4">
-            <Tabs value={txType} onValueChange={(v) => { setTxType(v as 'income' | 'expense'); setTxCatId(''); }}>
+            <Tabs
+              value={txType}
+              onValueChange={(v) => {
+                setTxType(v as 'income' | 'expense');
+                setTxCatId('');
+              }}>
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="income" className="text-green-600">
                   <TrendingUp className="h-4 w-4 mr-2" /> Receita
@@ -289,20 +382,37 @@ export function Dashboard() {
             </Tabs>
             <div className="space-y-2">
               <Label>Descrição</Label>
-              <Input placeholder="Ex: Salário, Supermercado..." value={txDesc} onChange={(e) => setTxDesc(e.target.value)} required />
+              <Input
+                placeholder="Ex: Salário, Supermercado..."
+                value={txDesc}
+                onChange={(e) => setTxDesc(e.target.value)}
+                required
+              />
             </div>
             <div className="space-y-2">
               <Label>Valor (R$)</Label>
-              <Input type="number" placeholder="0,00" step="0.01" min="0.01" value={txAmount} onChange={(e) => setTxAmount(e.target.value)} required />
+              <Input
+                type="number"
+                placeholder="0,00"
+                step="0.01"
+                min="0.01"
+                value={txAmount}
+                onChange={(e) => setTxAmount(e.target.value)}
+                required
+              />
             </div>
             {filteredCats.length > 0 && (
               <div className="space-y-2">
                 <Label>Categoria</Label>
                 <Select value={txCatId} onValueChange={setTxCatId}>
-                  <SelectTrigger><SelectValue placeholder="Selecionar categoria" /></SelectTrigger>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar categoria" />
+                  </SelectTrigger>
                   <SelectContent>
                     {filteredCats.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -310,12 +420,30 @@ export function Dashboard() {
             )}
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} required />
+              <Input
+                type="date"
+                value={txDate}
+                onChange={(e) => setTxDate(e.target.value)}
+                required
+              />
             </div>
             <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" className="flex-1" onClick={() => setTxDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" disabled={txSaving} className={`flex-1 ${txType === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                {txSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setTxDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={txSaving}
+                className={`flex-1 ${txType === 'income' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                {txSaving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  'Salvar'
+                )}
               </Button>
             </div>
           </form>
@@ -327,63 +455,133 @@ export function Dashboard() {
         <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Gerenciar Categorias</DialogTitle>
-            <DialogDescription>Crie ou edite as suas categorias financeiras.</DialogDescription>
+            <DialogDescription>
+              Crie ou edite as suas categorias financeiras.
+            </DialogDescription>
           </DialogHeader>
 
-          <form onSubmit={handleCatSubmit} className="space-y-4 pt-2 border-b pb-6">
-             <div className="flex items-center gap-2">
-               <h4 className="text-sm font-medium">{catEditId ? 'Editar Categoria' : 'Nova Categoria'}</h4>
-               {catEditId && (
-                 <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setCatEditId(null); setCatName(''); }}>
-                   Cancelar Edição
-                 </Button>
-               )}
-             </div>
-             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2 col-span-2">
-                  <Label>Nome</Label>
-                  <Input placeholder="Ex: Assinaturas" value={catName} onChange={(e) => setCatName(e.target.value)} required />
+          <form
+            onSubmit={handleCatSubmit}
+            className="space-y-4 pt-2 border-b pb-6">
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium">
+                {catEditId ? 'Editar Categoria' : 'Nova Categoria'}
+              </h4>
+              {catEditId && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  onClick={() => {
+                    setCatEditId(null);
+                    setCatName('');
+                  }}>
+                  Cancelar Edição
+                </Button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2 col-span-2">
+                <Label>Nome</Label>
+                <Input
+                  placeholder="Ex: Assinaturas"
+                  value={catName}
+                  onChange={(e) => setCatName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo</Label>
+                <Select
+                  value={catType}
+                  onValueChange={(v: 'income' | 'expense') => setCatType(v)}
+                  disabled={!!catEditId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="expense">Despesa</SelectItem>
+                    <SelectItem value="income">Receita</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Cor</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="color"
+                    value={catColor}
+                    onChange={(e) => setCatColor(e.target.value)}
+                    className="w-12 h-10 p-1"
+                  />
+                  <Input
+                    value={catColor}
+                    onChange={(e) => setCatColor(e.target.value)}
+                    placeholder="#000000"
+                    className="flex-1"
+                  />
                 </div>
-                <div className="space-y-2">
-                  <Label>Tipo</Label>
-                  <Select value={catType} onValueChange={(v: 'income'|'expense') => setCatType(v)} disabled={!!catEditId}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="expense">Despesa</SelectItem>
-                      <SelectItem value="income">Receita</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cor</Label>
-                  <div className="flex gap-2">
-                    <Input type="color" value={catColor} onChange={(e) => setCatColor(e.target.value)} className="w-12 h-10 p-1" />
-                    <Input value={catColor} onChange={(e) => setCatColor(e.target.value)} placeholder="#000000" className="flex-1" />
-                  </div>
-                </div>
-             </div>
-             <Button type="submit" disabled={catSaving} className="w-full">
-                {catSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : catEditId ? 'Salvar Alterações' : 'Criar Categoria'}
-             </Button>
+              </div>
+            </div>
+            <Button type="submit" disabled={catSaving} className="w-full">
+              {catSaving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : catEditId ? (
+                'Salvar Alterações'
+              ) : (
+                'Criar Categoria'
+              )}
+            </Button>
           </form>
 
           <div className="space-y-2">
             <h4 className="text-sm font-medium mt-2">Suas Categorias</h4>
-            {categories.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma categoria encontrada.</p>}
+            {categories.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                Nenhuma categoria encontrada.
+              </p>
+            )}
             {categories.map((c) => (
-              <div key={c.id} className="flex flex-row items-center justify-between p-2 rounded-md border text-sm">
+              <div
+                key={c.id}
+                className="flex flex-row items-center justify-between p-2 rounded-md border text-sm">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: c.color }}
+                  />
                   <span>{c.name}</span>
-                  <Badge variant="outline" className="text-[10px] ml-1">{c.type === 'income' ? 'Receita' : 'Despesa'}</Badge>
-                  {c.is_default && <Badge variant="secondary" className="text-[10px]">Padrão</Badge>}
+                  <Badge variant="outline" className="text-[10px] ml-1">
+                    {c.type === 'income' ? 'Receita' : 'Despesa'}
+                  </Badge>
+                  {c.is_default && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      Padrão
+                    </Badge>
+                  )}
                 </div>
                 {!c.is_default && (
                   <div className="flex items-center">
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-blue-500" onClick={() => { setCatEditId(c.id); setCatName(c.name); setCatType(c.type); setCatColor(c.color); }}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-blue-500"
+                      onClick={() => {
+                        setCatEditId(c.id);
+                        setCatName(c.name);
+                        setCatType(c.type);
+                        setCatColor(c.color);
+                      }}>
                       <Edit2 className="h-3 w-3" />
                     </Button>
-                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => handleDeleteCategory(c.id)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-red-500"
+                      onClick={() => handleDeleteCategory(c.id)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
@@ -396,11 +594,17 @@ export function Dashboard() {
 
       {/* Quick action buttons */}
       <div className="flex flex-wrap gap-3">
-        <Button onClick={() => openTxDialog()} className="bg-primary hover:bg-primary/90 text-primary-foreground">
+        <Button
+          onClick={() => openTxDialog()}
+          className="bg-primary hover:bg-primary/90 text-primary-foreground">
           <PlusCircle className="h-4 w-4 mr-2" /> Nova Transação
         </Button>
-        <Button onClick={() => setCatDialogOpen(true)} variant="outline" className="font-medium">
-          <FolderOpen className="h-4 w-4 mr-2 text-primary" /> Gerenciar Categorias
+        <Button
+          onClick={() => setCatDialogOpen(true)}
+          variant="outline"
+          className="font-medium">
+          <FolderOpen className="h-4 w-4 mr-2 text-primary" /> Gerenciar
+          Categorias
         </Button>
       </div>
 
@@ -457,10 +661,19 @@ export function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Saldo</CardTitle>
-            <DollarSign className={cn('h-4 w-4', balance >= 0 ? 'text-blue-500' : 'text-red-500')} />
+            <DollarSign
+              className={cn(
+                'h-4 w-4',
+                balance >= 0 ? 'text-blue-500' : 'text-red-500',
+              )}
+            />
           </CardHeader>
           <CardContent>
-            <div className={cn('text-2xl font-bold', balance >= 0 ? 'text-blue-600' : 'text-red-600')}>
+            <div
+              className={cn(
+                'text-2xl font-bold',
+                balance >= 0 ? 'text-blue-600' : 'text-red-600',
+              )}>
               {loading ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
               ) : (
@@ -475,7 +688,9 @@ export function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Score de Saúde</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Score de Saúde
+            </CardTitle>
             <Flame className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -494,21 +709,49 @@ export function Dashboard() {
           <CardHeader>
             <CardTitle className="text-sm">Distribuição do Orçamento</CardTitle>
             <CardDescription>
-              Renda: R$ {budget.total_income.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              Renda: R${' '}
+              {budget.total_income.toLocaleString('pt-BR', {
+                minimumFractionDigits: 2,
+              })}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Necessidades', amount: budget.needs_amount ?? 0, percent: budget.needs_percent, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                { label: 'Desejos', amount: budget.wants_amount ?? 0, percent: budget.wants_percent, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                { label: 'Investimentos', amount: budget.savings_amount ?? 0, percent: budget.savings_percent, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+                {
+                  label: 'Necessidades',
+                  amount: budget.needs_amount ?? 0,
+                  percent: budget.needs_percent,
+                  color: 'text-emerald-500',
+                  bg: 'bg-emerald-500/10',
+                },
+                {
+                  label: 'Desejos',
+                  amount: budget.wants_amount ?? 0,
+                  percent: budget.wants_percent,
+                  color: 'text-blue-500',
+                  bg: 'bg-blue-500/10',
+                },
+                {
+                  label: 'Investimentos',
+                  amount: budget.savings_amount ?? 0,
+                  percent: budget.savings_percent,
+                  color: 'text-purple-500',
+                  bg: 'bg-purple-500/10',
+                },
               ].map((item) => (
-                <div key={item.label} className={cn('rounded-lg p-3 text-center', item.bg)}>
-                  <p className={cn('text-lg font-bold', item.color)}>{item.percent}%</p>
+                <div
+                  key={item.label}
+                  className={cn('rounded-lg p-3 text-center', item.bg)}>
+                  <p className={cn('text-lg font-bold', item.color)}>
+                    {item.percent}%
+                  </p>
                   <p className="text-xs text-muted-foreground">{item.label}</p>
                   <p className="text-xs font-medium mt-0.5">
-                    R$ {(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                    R${' '}
+                    {item.amount.toLocaleString('pt-BR', {
+                      minimumFractionDigits: 0,
+                    })}
                   </p>
                 </div>
               ))}
@@ -524,7 +767,9 @@ export function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Fluxo Financeiro</CardTitle>
-                <CardDescription>Receitas vs Despesas ao longo do tempo</CardDescription>
+                <CardDescription>
+                  Receitas vs Despesas ao longo do tempo
+                </CardDescription>
               </div>
               <Tabs value={selectedPeriod} onValueChange={setSelectedPeriod}>
                 <TabsList>
@@ -543,15 +788,33 @@ export function Dashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="income" stackId="1" stroke="#10B981" fill="#10B981" fillOpacity={0.6} name="Receitas" />
-                  <Area type="monotone" dataKey="expenses" stackId="2" stroke="#EF4444" fill="#EF4444" fillOpacity={0.6} name="Despesas" />
+                  <Area
+                    type="monotone"
+                    dataKey="income"
+                    stackId="1"
+                    stroke="#10B981"
+                    fill="#10B981"
+                    fillOpacity={0.6}
+                    name="Receitas"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expenses"
+                    stackId="2"
+                    stroke="#EF4444"
+                    fill="#EF4444"
+                    fillOpacity={0.6}
+                    name="Despesas"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-[300px] flex items-center justify-center text-muted-foreground">
                 <div className="text-center">
                   <Target className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Adicione transações para ver o gráfico</p>
+                  <p className="text-sm">
+                    Adicione transações para ver o gráfico
+                  </p>
                 </div>
               </div>
             )}
@@ -562,16 +825,28 @@ export function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Categorias de Gastos</CardTitle>
-            <CardDescription>Distribuição das despesas este mês</CardDescription>
+            <CardDescription>
+              Distribuição das despesas este mês
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {categoryBreakdown.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={200}>
                   <PieChart>
-                    <Pie data={categoryBreakdown} cx="50%" cy="50%" innerRadius={40} outerRadius={80} paddingAngle={5} dataKey="total">
+                    <Pie
+                      data={categoryBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="total">
                       {categoryBreakdown.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.color || COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
                     <Tooltip content={<PieTooltip />} />
@@ -579,12 +854,25 @@ export function Dashboard() {
                 </ResponsiveContainer>
                 <div className="space-y-2 mt-4">
                   {categoryBreakdown.slice(0, 5).map((cat, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm">
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-sm">
                       <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color || COLORS[i % COLORS.length] }} />
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              cat.color || COLORS[i % COLORS.length],
+                          }}
+                        />
                         <span>{cat.category_name}</span>
                       </div>
-                      <span className="font-medium">R$ {cat.total.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}</span>
+                      <span className="font-medium">
+                        R${' '}
+                        {cat.total.toLocaleString('pt-BR', {
+                          minimumFractionDigits: 0,
+                        })}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -634,7 +922,10 @@ export function Dashboard() {
                   </p>
                   <p className="text-xs text-red-600 dark:text-red-300">
                     Seus gastos superam sua renda em R${' '}
-                    {(totalExpenses - totalIncome).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.
+                    {(totalExpenses - totalIncome).toLocaleString('pt-BR', {
+                      minimumFractionDigits: 2,
+                    })}
+                    .
                   </p>
                 </div>
               </div>
@@ -649,15 +940,23 @@ export function Dashboard() {
             <CardDescription>Registre suas movimentações</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button onClick={() => openTxDialog()} className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground">
+            <Button
+              onClick={() => openTxDialog()}
+              className="w-full justify-start bg-primary hover:bg-primary/90 text-primary-foreground">
               <PlusCircle className="h-4 w-4 mr-2" />
               Nova Transação
             </Button>
-            <Button onClick={() => setCatDialogOpen(true)} variant="secondary" className="w-full justify-start">
+            <Button
+              onClick={() => setCatDialogOpen(true)}
+              variant="secondary"
+              className="w-full justify-start">
               <FolderOpen className="h-4 w-4 mr-2 text-primary" />
               Gerenciar Categorias
             </Button>
-            <Button variant="secondary" className="w-full justify-start" onClick={fetchDashboard}>
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              onClick={fetchDashboard}>
               <TrendingUp className="h-4 w-4 mr-2" />
               Atualizar Visão
             </Button>

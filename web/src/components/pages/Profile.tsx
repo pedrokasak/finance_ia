@@ -1,16 +1,31 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch';
-import { Mail, Bell, Shield, CreditCard, Loader2, Sparkles, Zap, Lock } from 'lucide-react';
-import { toast } from 'sonner';
-import { api } from '@/api/client';
-import { QRCodeSVG } from 'qrcode.react';
+import { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import {
+  Mail,
+  Bell,
+  Shield,
+  CreditCard,
+  Loader2,
+  Sparkles,
+  Zap,
+  Lock,
+} from "lucide-react";
+import { toast } from "sonner";
+import { api } from "@/api/client";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Dialog,
   DialogContent,
@@ -18,9 +33,9 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { FinancialMethodModal } from '@/components/finance/FinancialMethodModal';
-import { useUser } from '@/contexts/UserContext';
+} from "@/components/ui/dialog";
+import { FinancialMethodModal } from "@/components/finance/FinancialMethodModal";
+import { useUser } from "@/contexts/UserContext";
 
 interface UserInfo {
   id: string;
@@ -44,42 +59,63 @@ interface FinancialMethod {
 // Extract user info from JWT without needing a /me endpoint immediately
 function getJWTPayload(): { email?: string; plan?: string; user_id?: string } {
   try {
-    const token = localStorage.getItem('authToken');
+    const token = localStorage.getItem("authToken");
     if (!token) return {};
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const payload = JSON.parse(atob(token.split(".")[1]));
     return payload;
   } catch {
     return {};
   }
 }
 
-const planConfig: Record<string, { label: string; color: string; price: string; icon: React.ElementType }> = {
-  free: { label: 'Gratuito', color: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', price: 'R$ 0/mês', icon: Zap },
-  premium: { label: 'Premium', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', price: 'R$ 14,90/mês', icon: Sparkles },
-  pro: { label: 'Pro', color: 'bg-gradient-to-r from-purple-600 to-blue-600 text-white', price: 'R$ 29,90/mês', icon: Lock },
+const planConfig: Record<
+  string,
+  { label: string; color: string; price: string; icon: React.ElementType }
+> = {
+  free: {
+    label: "Gratuito",
+    color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+    price: "R$ 0/mês",
+    icon: Zap,
+  },
+  premium: {
+    label: "Premium",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+    price: "R$ 14,90/mês",
+    icon: Sparkles,
+  },
+  pro: {
+    label: "Pro",
+    color: "bg-gradient-to-r from-purple-600 to-blue-600 text-white",
+    price: "R$ 29,90/mês",
+    icon: Lock,
+  },
 };
 
 export function Profile() {
   const jwt = getJWTPayload();
   const { updateAvatar, refreshProfile } = useUser();
   const [user, setUser] = useState<UserInfo>({
-    id: jwt.user_id || '',
-    email: jwt.email || '',
-    plan: jwt.plan || 'free',
+    id: jwt.user_id || "",
+    email: jwt.email || "",
+    plan: jwt.plan || "free",
   });
   const [saving, setSaving] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-  const [financialMethodId, setFinancialMethodId] = useState<string>('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [financialMethodId, setFinancialMethodId] = useState<string>("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [methods, setMethods] = useState<FinancialMethod[]>([]);
   const [isMethodModalOpen, setIsMethodModalOpen] = useState(false);
 
   // 2FA Setup States
   const [is2FASetupOpen, setIs2FASetupOpen] = useState(false);
-  const [setup2FAData, setSetup2FAData] = useState<{ secret: string; otpauth_url: string } | null>(null);
-  const [verifyCode, setVerifyCode] = useState('');
+  const [setup2FAData, setSetup2FAData] = useState<{
+    secret: string;
+    otpauth_url: string;
+  } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
   const [verifying2FA, setVerifying2FA] = useState(false);
 
   // Try to fetch user details from API
@@ -87,26 +123,32 @@ export function Profile() {
     if (!jwt.user_id) return;
 
     // Fetch user details
-    api.get(`/user/${jwt.user_id}`).then((res) => {
-      const u = (res.data)?.user || res.data;
-      if (u) {
-        setUser((prev) => ({ ...prev, ...u }));
-        setFirstName(u.first_name || '');
-        setLastName(u.last_name || '');
-        setAvatarUrl(u.avatar_url || '');
-        setFinancialMethodId(u.financial_method_id || '');
-        if (u.notifications_enabled !== undefined) {
-          setNotificationsEnabled(u.notifications_enabled);
+    api
+      .get(`/user/${jwt.user_id}`)
+      .then((res) => {
+        const u = res.data?.user || res.data;
+        if (u) {
+          setUser((prev) => ({ ...prev, ...u }));
+          setFirstName(u.first_name || "");
+          setLastName(u.last_name || "");
+          setAvatarUrl(u.avatar_url || "");
+          setFinancialMethodId(u.financial_method_id || "");
+          if (u.notifications_enabled !== undefined) {
+            setNotificationsEnabled(u.notifications_enabled);
+          }
         }
-      }
-    }).catch(() => {
-      setFirstName(jwt.email?.split('@')[0] || '');
-    });
+      })
+      .catch(() => {
+        setFirstName(jwt.email?.split("@")[0] || "");
+      });
 
     // Fetch financial methods
-    api.get('/finance/methods').then((res) => {
-      setMethods((res.data)?.data || res.data || []);
-    }).catch(console.error);
+    api
+      .get("/finance/methods")
+      .then((res) => {
+        setMethods(res.data?.data || res.data || []);
+      })
+      .catch(console.error);
   }, [jwt.user_id, jwt.email]);
 
   const handleSave = async () => {
@@ -118,24 +160,24 @@ export function Profile() {
         last_name: lastName,
         avatar_url: avatarUrl || null,
         financial_method_id: financialMethodId || null,
-        notifications_enabled: notificationsEnabled
+        notifications_enabled: notificationsEnabled,
       });
-      toast.success('Perfil atualizado com sucesso!', {
+      toast.success("Perfil atualizado com sucesso!", {
         style: {
-          backgroundColor: '#025439ff',
-          color: '#fff',
-          border: 'none',
+          backgroundColor: "#025439ff",
+          color: "#fff",
+          border: "none",
         },
       });
       // Atualiza contexto global (Header)
       refreshProfile();
     } catch {
-      toast.error('Erro ao atualizar perfil.', {
+      toast.error("Erro ao atualizar perfil.", {
         style: {
-          backgroundColor: '#7b0821ff',
-          color: '#fff',
-          border: 'none',
-        }
+          backgroundColor: "#7b0821ff",
+          color: "#fff",
+          border: "none",
+        },
       });
     } finally {
       setSaving(false);
@@ -144,43 +186,46 @@ export function Profile() {
 
   const handleOpen2FASetup = async () => {
     try {
-      const res = await api.post('/auth/2fa/setup');
+      const res = await api.post("/auth/2fa/setup");
       setSetup2FAData(res.data);
       setIs2FASetupOpen(true);
     } catch (e: unknown) {
       const error = e as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || 'Erro ao preparar ativação do 2FA', {
-        style: {
-          backgroundColor: '#7b0821ff',
-          color: '#fff',
-          border: 'none',
-        }
-      });
+      toast.error(
+        error.response?.data?.error || "Erro ao preparar ativação do 2FA",
+        {
+          style: {
+            backgroundColor: "#7b0821ff",
+            color: "#fff",
+            border: "none",
+          },
+        },
+      );
     }
   };
 
   const handleVerify2FA = async () => {
     setVerifying2FA(true);
     try {
-      await api.post('/auth/2fa/verify', { code: verifyCode });
-      toast.success('2FA ativado com sucesso!', {
+      await api.post("/auth/2fa/verify", { code: verifyCode });
+      toast.success("2FA ativado com sucesso!", {
         style: {
-          backgroundColor: '#025439ff',
-          color: '#fff',
-          border: 'none',
+          backgroundColor: "#025439ff",
+          color: "#fff",
+          border: "none",
         },
       });
       setUser((prev) => ({ ...prev, two_fa_enabled: true }));
       setIs2FASetupOpen(false);
-      setVerifyCode('');
+      setVerifyCode("");
     } catch (e: unknown) {
       const error = e as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || 'Código inválido', {
+      toast.error(error.response?.data?.error || "Código inválido", {
         style: {
-          backgroundColor: '#7b0821ff',
-          color: '#fff',
-          border: 'none',
-        }
+          backgroundColor: "#7b0821ff",
+          color: "#fff",
+          border: "none",
+        },
       });
     } finally {
       setVerifying2FA(false);
@@ -189,17 +234,17 @@ export function Profile() {
 
   const handleDisable2FA = async () => {
     try {
-      await api.post('/auth/2fa/disable');
-      toast.success('2FA desativado com sucesso!');
+      await api.post("/auth/2fa/disable");
+      toast.success("2FA desativado com sucesso!");
       setUser((prev) => ({ ...prev, two_fa_enabled: false }));
     } catch (e: unknown) {
       const error = e as { response?: { data?: { error?: string } } };
-      toast.error(error.response?.data?.error || 'Erro ao desativar 2FA', {
+      toast.error(error.response?.data?.error || "Erro ao desativar 2FA", {
         style: {
-          backgroundColor: '#7b0821ff',
-          color: '#fff',
-          border: 'none',
-        }
+          backgroundColor: "#7b0821ff",
+          color: "#fff",
+          border: "none",
+        },
       });
     }
   };
@@ -218,12 +263,15 @@ export function Profile() {
     }
   };
 
-  const currentMethod = methods.find(m => m.id === financialMethodId);
+  const currentMethod = methods.find((m) => m.id === financialMethodId);
 
-  const plan = planConfig[user.plan || 'free'] || planConfig.free;
+  const plan = planConfig[user.plan || "free"] || planConfig.free;
   const PlanIcon = plan.icon;
 
-  const initials = ((firstName?.[0] || '') + (lastName?.[0] || '')).toUpperCase() || user.email?.[0]?.toUpperCase() || '?';
+  const initials =
+    ((firstName?.[0] || "") + (lastName?.[0] || "")).toUpperCase() ||
+    user.email?.[0]?.toUpperCase() ||
+    "?";
 
   return (
     <div className="space-y-6">
@@ -232,18 +280,26 @@ export function Profile() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Informações Pessoais</CardTitle>
-            <CardDescription>Atualize suas informações de conta</CardDescription>
+            <CardDescription>
+              Atualize suas informações de conta
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20 text-2xl">
-                <AvatarImage src={avatarUrl} alt="Avatar" className="object-cover" />
+                <AvatarImage
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="object-cover"
+                />
                 <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
                   {initials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 space-y-1">
-                <p className="font-semibold">{firstName} {lastName}</p>
+                <p className="font-semibold">
+                  {firstName} {lastName}
+                </p>
                 <p className="text-sm text-muted-foreground">{user.email}</p>
                 <Badge className={`mt-1 text-xs ${plan.color}`}>
                   <PlanIcon className="h-3 w-3 mr-1" /> Plano {plan.label}
@@ -256,11 +312,19 @@ export function Profile() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Nome</Label>
-                <Input placeholder="Seu nome" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+                <Input
+                  placeholder="Seu nome"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Sobrenome</Label>
-                <Input placeholder="Seu sobrenome" value={lastName} onChange={(e) => setLastName(e.target.value)} />
+                <Input
+                  placeholder="Seu sobrenome"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                />
               </div>
             </div>
 
@@ -268,9 +332,16 @@ export function Profile() {
               <Label>Email</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input type="email" value={user.email} readOnly className="pl-10 bg-muted cursor-not-allowed" />
+                <Input
+                  type="email"
+                  value={user.email}
+                  readOnly
+                  className="pl-10 bg-muted cursor-not-allowed"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">O email não pode ser alterado.</p>
+              <p className="text-xs text-muted-foreground">
+                O email não pode ser alterado.
+              </p>
             </div>
 
             <Separator />
@@ -290,13 +361,27 @@ export function Profile() {
                 {currentMethod ? (
                   <div className="flex items-center justify-between border rounded-md p-2">
                     <div className="flex flex-col">
-                      <span className="font-semibold text-sm">{currentMethod.name}</span>
-                      <span className="text-xs text-muted-foreground">{currentMethod.tagline}</span>
+                      <span className="font-semibold text-sm">
+                        {currentMethod.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {currentMethod.tagline}
+                      </span>
                     </div>
-                    <Button variant="outline" size="sm" onClick={() => setIsMethodModalOpen(true)}>Alterar</Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsMethodModalOpen(true)}
+                    >
+                      Alterar
+                    </Button>
                   </div>
                 ) : (
-                  <Button variant="outline" className="w-full text-muted-foreground justify-start font-normal h-10 px-3" onClick={() => setIsMethodModalOpen(true)}>
+                  <Button
+                    variant="outline"
+                    className="w-full text-muted-foreground justify-start font-normal h-10 px-3"
+                    onClick={() => setIsMethodModalOpen(true)}
+                  >
                     Sabe qual a melhor divisão para o seu dinheiro? Selecione.
                   </Button>
                 )}
@@ -304,7 +389,9 @@ export function Profile() {
             </div>
 
             <Button onClick={handleSave} disabled={saving} className="w-full">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
               Salvar Alterações
             </Button>
           </CardContent>
@@ -321,22 +408,36 @@ export function Profile() {
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Email verificado</span>
-                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">✓ Sim</Badge>
+                <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                  ✓ Sim
+                </Badge>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Autenticação 2FA</span>
                 {user.two_fa_enabled ? (
-                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">✓ Ativo</Badge>
+                  <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                    ✓ Ativo
+                  </Badge>
                 ) : (
                   <Badge variant="outline">Inativo</Badge>
                 )}
               </div>
               {user.two_fa_enabled ? (
-                <Button variant="destructive" size="sm" className="w-full" onClick={handleDisable2FA}>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleDisable2FA}
+                >
                   Desativar 2FA
                 </Button>
               ) : (
-                <Button variant="outline" size="sm" className="w-full" onClick={handleOpen2FASetup}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleOpen2FASetup}
+                >
                   Ativar 2FA
                 </Button>
               )}
@@ -356,18 +457,27 @@ export function Profile() {
                   <PlanIcon className="h-3.5 w-3.5 mr-1.5" /> {plan.label}
                 </Badge>
                 <p className="text-2xl font-bold mt-2">{plan.price}</p>
-                {user.plan === 'free' && (
+                {user.plan === "free" && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Faça upgrade para desbloquear análises avançadas
                   </p>
                 )}
               </div>
-              {user.plan !== 'free' ? (
-                <Button variant="outline" size="sm" className="w-full" onClick={() => window.location.href = '/?page=subscription'}>
+              {user.plan !== "free" ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => (window.location.href = "/?page=subscription")}
+                >
                   Gerenciar Assinatura
                 </Button>
               ) : (
-                <Button size="sm" className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white" onClick={() => window.location.href = '/?page=subscription'}>
+                <Button
+                  size="sm"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+                  onClick={() => (window.location.href = "/?page=subscription")}
+                >
                   Fazer Upgrade
                 </Button>
               )}
@@ -383,7 +493,12 @@ export function Profile() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label htmlFor="notificationsEnabled" className="text-sm cursor-pointer">Notificações por Email</Label>
+                <Label
+                  htmlFor="notificationsEnabled"
+                  className="text-sm cursor-pointer"
+                >
+                  Notificações por Email
+                </Label>
                 <Switch
                   id="notificationsEnabled"
                   checked={notificationsEnabled}
@@ -391,7 +506,12 @@ export function Profile() {
                 />
               </div>
               <div className="flex items-center justify-between opacity-50">
-                <Label htmlFor="push-disabled" className="text-sm cursor-pointer">Notificações Push (Em Breve)</Label>
+                <Label
+                  htmlFor="push-disabled"
+                  className="text-sm cursor-pointer"
+                >
+                  Notificações Push (Em Breve)
+                </Label>
                 <Switch id="push-disabled" disabled checked={false} />
               </div>
             </CardContent>
@@ -412,7 +532,8 @@ export function Profile() {
           <DialogHeader>
             <DialogTitle>Configurar Autenticação em 2 Etapas</DialogTitle>
             <DialogDescription>
-              Escaneie o QRCode abaixo usando um aplicativo autenticador como Google Authenticator ou Authy.
+              Escaneie o QRCode abaixo usando um aplicativo autenticador como
+              Google Authenticator ou Authy.
             </DialogDescription>
           </DialogHeader>
           {setup2FAData && (
@@ -434,9 +555,16 @@ export function Profile() {
             </div>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIs2FASetupOpen(false)}>Cancelar</Button>
-            <Button onClick={handleVerify2FA} disabled={verifying2FA || verifyCode.length < 6}>
-              {verifying2FA && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button variant="outline" onClick={() => setIs2FASetupOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleVerify2FA}
+              disabled={verifying2FA || verifyCode.length < 6}
+            >
+              {verifying2FA && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Ativar 2FA
             </Button>
           </DialogFooter>
