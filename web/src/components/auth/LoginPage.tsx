@@ -9,9 +9,10 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { errorHandler } from '../../utils/errors';
 import useAuth from '../../hooks/use-auth';
+import { AuthPage } from '../../types/auth';
 
 interface AuthProps {
-  onNavigate: (page: string) => void;
+  onNavigate: (page: AuthPage) => void;
 }
 
 const loginSchema = z.object({
@@ -64,7 +65,8 @@ export function LoginPage({ onNavigate }: AuthProps) {
           toast.info('Autenticação em duas etapas é necessária');
           return;
         }
-        const message = response.error || 'Falha no login. Verifique suas credenciais';
+        const message =
+          response.error || 'Falha no login. Verifique suas credenciais';
         setErrors({ form: message });
         toast.error(message);
       }
