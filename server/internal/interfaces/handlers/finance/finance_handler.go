@@ -2,6 +2,7 @@ package finance
 
 import (
 	"finance-ia/internal/domain/finance"
+	"finance-ia/internal/utils"
 	"net/http"
 	"strconv"
 	"time"
@@ -47,7 +48,7 @@ type createTransactionRequest struct {
 }
 
 func (h *FinanceHandler) CreateTransaction(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	var req createTransactionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -100,7 +101,7 @@ type updateTransactionRequest struct {
 }
 
 func (h *FinanceHandler) UpdateTransaction(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	txID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid transaction id"})
@@ -142,7 +143,7 @@ func (h *FinanceHandler) UpdateTransaction(c *gin.Context) {
 }
 
 func (h *FinanceHandler) ListTransactions(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	filter := finance.TransactionFilter{
 		UserID: userID,
@@ -191,7 +192,7 @@ func (h *FinanceHandler) ListTransactions(c *gin.Context) {
 }
 
 func (h *FinanceHandler) DeleteTransaction(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
@@ -207,7 +208,7 @@ func (h *FinanceHandler) DeleteTransaction(c *gin.Context) {
 }
 
 func (h *FinanceHandler) ListCategories(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	cats, err := h.financeService.GetCategories(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -233,7 +234,7 @@ type createCategoryRequest struct {
 }
 
 func (h *FinanceHandler) CreateCategory(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	var req createCategoryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -264,7 +265,7 @@ type updateCategoryRequest struct {
 }
 
 func (h *FinanceHandler) UpdateCategory(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	catID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category id"})
@@ -293,7 +294,7 @@ func (h *FinanceHandler) UpdateCategory(c *gin.Context) {
 }
 
 func (h *FinanceHandler) DeleteCategory(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	catID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid category id"})
@@ -309,7 +310,7 @@ func (h *FinanceHandler) DeleteCategory(c *gin.Context) {
 }
 
 func (h *FinanceHandler) GetBudget(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	budget, err := h.financeService.GetCurrentBudget(userID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"message": "no budget set for this period"})
@@ -326,7 +327,7 @@ type upsertBudgetRequest struct {
 }
 
 func (h *FinanceHandler) UpsertBudget(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	var req upsertBudgetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -358,7 +359,7 @@ func (h *FinanceHandler) UpsertBudget(c *gin.Context) {
 }
 
 func (h *FinanceHandler) GetDashboard(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 	summary, err := h.financeService.GetDashboardSummary(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -367,8 +368,3 @@ func (h *FinanceHandler) GetDashboard(c *gin.Context) {
 	c.JSON(http.StatusOK, summary)
 }
 
-func getUserID(c *gin.Context) uuid.UUID {
-	userIDstr, _ := c.Get("user_id")
-	id, _ := uuid.Parse(userIDstr.(string))
-	return id
-}

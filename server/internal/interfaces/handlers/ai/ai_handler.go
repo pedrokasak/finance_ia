@@ -4,6 +4,7 @@ import (
 	"finance-ia/internal/domain/ai"
 	"finance-ia/internal/domain/finance"
 	"finance-ia/internal/domain/user"
+	"finance-ia/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -30,7 +31,7 @@ func (h *AIHandler) RegisterRoutes(public, protected gin.IRouter) {
 }
 
 func (h *AIHandler) GetInsight(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	// Buscar o plano real do BD invés de confiar no JWT
 	u, err := h.userService.GetByID(userID)
@@ -63,7 +64,7 @@ func (h *AIHandler) GetInsight(c *gin.Context) {
 }
 
 func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	u, err := h.userService.GetByID(userID)
 	plan := "free"
@@ -94,7 +95,7 @@ func (h *AIHandler) GetFullAnalysis(c *gin.Context) {
 }
 
 func (h *AIHandler) GetHealthScore(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	summary, err := h.financeService.GetDashboardSummary(userID)
 	if err != nil {
@@ -144,8 +145,3 @@ func (h *AIHandler) buildFinancialContext(userID uuid.UUID, plan string) (*ai.Fi
 	return ctx, nil
 }
 
-func getUserID(c *gin.Context) uuid.UUID {
-	userIDstr, _ := c.Get("user_id")
-	id, _ := uuid.Parse(userIDstr.(string))
-	return id
-}
