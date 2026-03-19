@@ -1,5 +1,5 @@
-.DS_Store
 
+server/.DS_Store
 server/node_modules
 server/dist
 server/.env
@@ -7,6 +7,7 @@ server/.env
 server/.env.development.local
 
 web/node_modules
+web/.DS_Store
 web/dist
 web/.env
 web/.env.local
