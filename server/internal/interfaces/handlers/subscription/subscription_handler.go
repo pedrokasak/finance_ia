@@ -4,6 +4,7 @@ import (
 	"finance-ia/internal/domain/payment"
 	"finance-ia/internal/domain/subscription"
 	"finance-ia/internal/domain/user"
+	"finance-ia/internal/utils"
 	dbsub "finance-ia/internal/infrastructure/database/subscription"
 	"fmt"
 	"io"
@@ -63,7 +64,7 @@ func (h *SubscriptionHandler) GetPlans(c *gin.Context) {
 }
 
 func (h *SubscriptionHandler) GetMySubscription(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	u, _ := h.userRepo.FindByID(userID)
 
@@ -144,7 +145,7 @@ func (h *SubscriptionHandler) syncSubscriptionFromStripe(u *user.User) (*subscri
 }
 
 func (h *SubscriptionHandler) GetInvoices(c *gin.Context) {
-	userID := getUserID(c)
+	userID := utils.GetUserID(c)
 
 	u, err := h.userRepo.FindByID(userID)
 	if err != nil {
@@ -189,7 +190,7 @@ func resolvePaymentMethods(method string) []string {
 }
 
 func (h *SubscriptionHandler) CreateCheckout(c *gin.Context) {
-	userIDVal := getUserID(c)
+	userIDVal := utils.GetUserID(c)
 
 	var req createCheckoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -266,7 +267,7 @@ func getPriceIDFromEnv(plan, billingType string) string {
 }
 
 func (h *SubscriptionHandler) CreatePortal(c *gin.Context) {
-	userIDVal := getUserID(c)
+	userIDVal := utils.GetUserID(c)
 
 	u, err := h.userRepo.FindByID(userIDVal)
 	if err != nil {
@@ -402,8 +403,3 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 	return nil
 }
 
-func getUserID(c *gin.Context) uuid.UUID {
-	userIDstr, _ := c.Get("user_id")
-	id, _ := uuid.Parse(userIDstr.(string))
-	return id
-}

@@ -19,6 +19,22 @@ type PerplexityProvider struct {
 	model  string
 }
 
+type perplexityRequest struct {
+	Model    string              `json:"model"`
+	Messages []perplexityMessage `json:"messages"`
+}
+
+type perplexityMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type perplexityResponse struct {
+	Choices []struct {
+		Message perplexityMessage `json:"message"`
+	} `json:"choices"`
+}
+
 // NewPerplexityProvider creates a new Perplexity AI provider
 func NewPerplexityProvider() (*PerplexityProvider, error) {
 	apiKey := os.Getenv("PERPLEXITY_API_KEY")
@@ -90,16 +106,16 @@ func (p *PerplexityProvider) GenerateFullAnalysis(ctx ai.FinancialContext) ([]*a
 func (p *PerplexityProvider) generate(prompt string) (string, error) {
 	url := "https://api.perplexity.ai/chat/completions"
 
-	payload := map[string]interface{}{
-		"model": p.model,
-		"messages": []map[string]string{
+	payload := perplexityRequest{
+		Model: p.model,
+		Messages: []perplexityMessage{
 			{
-				"role":    "system",
-				"content": "Você é um consultor financeiro pessoal preciso e direto.",
+				Role:    "system",
+				Content: "Você é um consultor financeiro pessoal preciso e direto.",
 			},
 			{
-				"role":    "user",
-				"content": prompt,
+				Role:    "user",
+				Content: prompt,
 			},
 		},
 	}
@@ -128,19 +144,14 @@ func (p *PerplexityProvider) generate(prompt string) (string, error) {
 		return "", fmt.Errorf("perplexity api error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
-	var result map[string]interface{}
+	var result perplexityResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", err
 	}
 
-	choices, ok := result["choices"].([]interface{})
-	if !ok || len(choices) == 0 {
+	if len(result.Choices) == 0 {
 		return "", fmt.Errorf("no choices returned from perplexity")
 	}
 
-	firstChoice := choices[0].(map[string]interface{})
-	message := firstChoice["message"].(map[string]interface{})
-	content := message["content"].(string)
-
-	return strings.TrimSpace(content), nil
+	return strings.TrimSpace(result.Choices[0].Message.Content), nil
 }

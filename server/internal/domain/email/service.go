@@ -36,9 +36,9 @@ func getEnv(key, defaultValue string) string {
 }
 
 func (s *SMTPService) SendPasswordReset(email, token string) error {
-	baseURL := os.Getenv("FRONTEND_URL")
+	baseURL := os.Getenv("APP_URL")
 	resetURL := fmt.Sprintf("%s/reset-password?token=%s", baseURL, token)
-	
+
 	subject := "Recuperação de Senha"
 	body := s.getPasswordResetTemplate(resetURL)
 
