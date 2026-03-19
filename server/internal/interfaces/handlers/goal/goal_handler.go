@@ -2,6 +2,7 @@ package goal
 
 import (
 	"finance-ia/internal/domain/goal"
+	"finance-ia/internal/utils"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +51,7 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 		return
 	}
 
-	userID := h.getUserID(c)
+	userID := utils.GetUserID(c)
 
 	targetDate, err := http.ParseTime(input.TargetDate)
 	if err != nil {
@@ -78,7 +79,7 @@ func (h *GoalHandler) CreateGoal(c *gin.Context) {
 }
 
 func (h *GoalHandler) GetGoals(c *gin.Context) {
-	userID := h.getUserID(c)
+	userID := utils.GetUserID(c)
 	goals, err := h.service.GetByUser(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -118,7 +119,7 @@ func (h *GoalHandler) UpdateGoal(c *gin.Context) {
 		return
 	}
 
-	userID := h.getUserID(c)
+	userID := utils.GetUserID(c)
 	if existingGoal.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
@@ -163,7 +164,7 @@ func (h *GoalHandler) DeleteGoal(c *gin.Context) {
 		return
 	}
 
-	userID := h.getUserID(c)
+	userID := utils.GetUserID(c)
 	if existingGoal.UserID != userID {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
@@ -177,8 +178,3 @@ func (h *GoalHandler) DeleteGoal(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Goal deleted successfully"})
 }
 
-func (h *GoalHandler) getUserID(c *gin.Context) uuid.UUID {
-	userIDstr, _ := c.Get("user_id")
-	id, _ := uuid.Parse(userIDstr.(string))
-	return id
-}
