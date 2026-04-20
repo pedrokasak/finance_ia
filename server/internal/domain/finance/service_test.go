@@ -66,7 +66,7 @@ func (m *mockTxRepo) Update(tx *finance.Transaction) error {
 }
 
 func (m *mockTxRepo) Delete(id, userID uuid.UUID) error { return nil }
-func (m *mockTxRepo) FindByIdempotencyKey(key string) (*finance.Transaction, error) {
+func (m *mockTxRepo) FindByIdempotencyKey(userID uuid.UUID, key string) (*finance.Transaction, error) {
 	if m.findByKeyTx != nil {
 		return m.findByKeyTx, nil
 	}

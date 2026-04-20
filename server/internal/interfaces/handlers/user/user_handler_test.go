@@ -2,7 +2,6 @@ package handlers_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	domainUser "finance-ia/internal/domain/user"
@@ -21,7 +20,7 @@ type mockUserUseCase struct{}
 
 func (m *mockUserUseCase) Register(firstName, lastName, email, password string) (*domainUser.User, error) {
 	if email == "exists@example.com" {
-		return nil, errors.New("user already exists")
+		return nil, errors.New("duplicate key")
 	}
 	return &domainUser.User{
 		ID:        uuid.New(),
@@ -40,7 +39,7 @@ func (m *mockUserUseCase) Login(email, password string) (string, error) {
 
 func (m *mockUserUseCase) GetAll() ([]*domainUser.User, error) { return []*domainUser.User{}, nil }
 func (m *mockUserUseCase) GetByID(id uuid.UUID) (*domainUser.User, error) {
-	return &domainUser.User{ID: id}, nil
+	return &domainUser.User{ID: id, Email: "test@example.com"}, nil
 }
 func (m *mockUserUseCase) GetByEmail(email string) (*domainUser.User, error) {
 	if email == "exists@example.com" {
@@ -55,8 +54,14 @@ func (m *mockUserUseCase) ResetPassword(token, newPassword string) error { retur
 func setupRouter(handler *handlers.UserHandler) *gin.Engine {
 	gin.SetMode(gin.TestMode)
 	r := gin.Default()
+	r.Use(func(c *gin.Context) {
+		if uid := c.GetHeader("X-Test-User-ID"); uid != "" {
+			c.Set("user_id", uid)
+		}
+		c.Next()
+	})
 	r.POST("/user/register", handler.Register)
-	r.PATCH("/user/update/:id", handler.UpdateUser)
+	r.PUT("/user/update/:id", handler.UpdateUser)
 	r.DELETE("/user/delete/:id", handler.DeleteUser)
 	r.GET("/user/:id", handler.GetUserByID)
 	r.GET("/users", handler.GetAllUsers)
@@ -72,7 +77,7 @@ func TestRegisterUser_Success(t *testing.T) {
 		"first_name": "Pedro",
 		"last_name":  "Sant Anna",
 		"email":      "pedro@test.com",
-		"password":   "123456",
+		"password":   "12345678",
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -95,7 +100,7 @@ func TestRegisterUser_AlreadyExists(t *testing.T) {
 		"first_name": "Pedro",
 		"last_name":  "Sant Anna",
 		"email":      "exists@example.com",
-		"password":   "123456",
+		"password":   "12345678",
 	}
 	jsonBody, _ := json.Marshal(body)
 
@@ -117,6 +122,7 @@ func TestGetUserByID_Success(t *testing.T) {
 	userID := uuid.New()
 	req, _ := http.NewRequest("GET", "/user/"+userID.String(), nil)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Test-User-ID", userID.String())
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
@@ -132,6 +138,7 @@ func TestGetUserByID_NotFound(t *testing.T) {
 
 	req, _ := http.NewRequest("GET", "/user/invalid-uuid", nil)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Test-User-ID", uuid.New().String())
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
@@ -153,6 +160,22 @@ func TestGetAllUsers_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusNotFound, resp.Code)
 	assert.Contains(t, resp.Body.String(), "nenhum usuário encontrado")
+}
+
+func TestGetUserByID_Forbidden(t *testing.T) {
+	usecase := &mockUserUseCase{}
+	handler := handlers.NewUserHandler(usecase)
+	router := setupRouter(handler)
+
+	req, _ := http.NewRequest("GET", "/user/"+uuid.New().String(), nil)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Test-User-ID", uuid.New().String())
+	resp := httptest.NewRecorder()
+
+	router.ServeHTTP(resp, req)
+
+	assert.Equal(t, http.StatusForbidden, resp.Code)
+	assert.Contains(t, resp.Body.String(), "acesso negado")
 }
 
 func TestGetAllUsers_Empty(t *testing.T) {
@@ -180,9 +203,9 @@ func TestUpdateUser_Success(t *testing.T) {
 	}
 	jsonBody, _ := json.Marshal(body)
 	userID := uuid.New()
-	req, _ := http.NewRequest("PATCH", "/user/update/"+userID.String(), bytes.NewBuffer(jsonBody))
+	req, _ := http.NewRequest("PUT", "/user/update/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	req.Header.Set("X-Test-User-ID", userID.String())
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)
@@ -203,7 +226,7 @@ func TestDeleteUser_Success(t *testing.T) {
 	userID := uuid.New()
 	req, _ := http.NewRequest("DELETE", "/user/delete/"+userID.String(), bytes.NewBuffer(jsonBody))
 	req.Header.Set("Content-Type", "application/json")
-	req = req.WithContext(context.WithValue(req.Context(), "id", "mocked_id"))
+	req.Header.Set("X-Test-User-ID", userID.String())
 	resp := httptest.NewRecorder()
 
 	router.ServeHTTP(resp, req)

@@ -254,20 +254,10 @@ func (s *Service) ResetPassword(token, newPassword string) error {
 		return errors.New("password must be at least 6 characters")
 	}
 
-	// Busca o token
-	resetToken, err := s.emailTokenRepo.FindResetToken(token)
+	// Consome o token de forma atômica para evitar race condition
+	resetToken, err := s.emailTokenRepo.ConsumeResetToken(token)
 	if err != nil {
 		return errors.New("invalid or expired token")
-	}
-
-	// Verifica se já foi usado
-	if resetToken.Used {
-		return errors.New("token already used")
-	}
-
-	// Verifica se expirou
-	if time.Now().After(resetToken.ExpiresAt) {
-		return errors.New("token expired")
 	}
 
 	userID, err := uuid.Parse(resetToken.UserID)
@@ -285,12 +275,6 @@ func (s *Service) ResetPassword(token, newPassword string) error {
 	user.Password = newPassword
 	if err := s.repo.ResetPassword(user.Email, newPassword); err != nil {
 		return fmt.Errorf("failed to update password: %w", err)
-	}
-
-	// Marca token como usado
-	resetToken.Used = true
-	if err := s.emailTokenRepo.UpdateResetToken(resetToken); err != nil {
-		return fmt.Errorf("failed to update token: %w", err)
 	}
 
 	return nil

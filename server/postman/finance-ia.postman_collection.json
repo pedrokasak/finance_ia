@@ -40,7 +40,7 @@
                     ],
                     "request": {
                         "method": "POST",
-                        "url": "{{baseUrl}}/auth/register",
+                        "url": "{{baseUrl}}/user/register",
                         "header": [
                             {
                                 "key": "Content-Type",

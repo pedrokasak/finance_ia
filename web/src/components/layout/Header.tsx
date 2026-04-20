@@ -15,6 +15,7 @@ import { useTheme } from "next-themes";
 import type { Page } from "@/App";
 import useAuth from "../../hooks/use-auth";
 import { useUser } from "@/contexts/UserContext";
+import { isTrustedAvatarDataUrl } from "@/utils/avatar";
 
 interface HeaderProps {
   currentPage: Page;
@@ -119,8 +120,8 @@ export function Header({
                 className="relative h-10 w-10 rounded-full"
               >
                 <Avatar className="h-10 w-10">
-                  {profile?.avatar_url ? (
-                    <AvatarImage src={profile.avatar_url} alt={displayName} />
+                  {isTrustedAvatarDataUrl(profile?.avatar_url) ? (
+                    <AvatarImage src={profile?.avatar_url ?? ""} alt={displayName} />
                   ) : null}
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>

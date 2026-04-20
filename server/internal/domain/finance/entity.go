@@ -17,14 +17,14 @@ const (
 // Transaction represents a financial transaction
 type Transaction struct {
 	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	UserID         uuid.UUID       `json:"user_id" gorm:"type:uuid;not null;index"`
+	UserID         uuid.UUID       `json:"user_id" gorm:"type:uuid;not null;index;uniqueIndex:idx_tx_user_idempotency,where:idempotency_key <> ''"`
 	CategoryID     *uuid.UUID      `json:"category_id" gorm:"type:uuid"`
 	Type           TransactionType `json:"type" gorm:"not null"`
 	Amount         float64         `json:"amount" gorm:"not null"`
 	Description    string          `json:"description" gorm:"default:''"`
 	Date           time.Time       `json:"date" gorm:"not null"`
 	IsRecurring    bool            `json:"is_recurring" gorm:"default:false"`
-	IdempotencyKey string          `json:"-" gorm:"uniqueIndex;default:''"`
+	IdempotencyKey string          `json:"-" gorm:"size:128;default:'';uniqueIndex:idx_tx_user_idempotency,where:idempotency_key <> ''"`
 	CreatedAt      time.Time       `json:"created_at"`
 	UpdatedAt      time.Time       `json:"updated_at"`
 

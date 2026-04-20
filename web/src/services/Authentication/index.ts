@@ -44,10 +44,33 @@ class AuthenticationService implements AuthenticationInterface {
     return { success: true };
   }
   async signup(data: SignupRequest): Promise<SignupResponse> {
-    console.log(
-      `Signing up with email: ${data.firstName} ${data.lastName} <${data.email}> ${data.password} ${data.confirmPassword} ${data.acceptTerms}`,
-    );
-    return { success: true };
+    try {
+      await authentication.signup(data);
+      const loginResponse = await this.login({
+        email: data.email,
+        password: data.password,
+      });
+
+      if (!loginResponse.success) {
+        return {
+          success: false,
+          error: loginResponse.error || "Conta criada, mas falha no login automático",
+        };
+      }
+
+      return {
+        success: true,
+        email: loginResponse.email,
+        token: loginResponse.token,
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      console.error("Signup failed:", error);
+      return {
+        success: false,
+        error: error?.error || error?.message || "Falha ao criar conta",
+      };
+    }
   }
   async forgotPassword(data: { email: string }): Promise<{ message: string }> {
     console.log(`Forgot password for email: ${data.email}`);

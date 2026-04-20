@@ -88,9 +88,9 @@ func (r *TransactionRepository) Delete(id uuid.UUID, userID uuid.UUID) error {
 	return r.db.Where("id = ? AND user_id = ?", id, userID).Delete(&finance.Transaction{}).Error
 }
 
-func (r *TransactionRepository) FindByIdempotencyKey(key string) (*finance.Transaction, error) {
+func (r *TransactionRepository) FindByIdempotencyKey(userID uuid.UUID, key string) (*finance.Transaction, error) {
 	var tx finance.Transaction
-	if err := r.db.Where("idempotency_key = ?", key).First(&tx).Error; err != nil {
+	if err := r.db.Where("user_id = ? AND idempotency_key = ?", userID, key).First(&tx).Error; err != nil {
 		return nil, err
 	}
 	return &tx, nil

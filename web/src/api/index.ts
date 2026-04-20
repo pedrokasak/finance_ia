@@ -40,16 +40,21 @@ const authentication = {
     return response as unknown;
   },
   signup: async (data: SignupRequest) => {
-    return await fetchApi<unknown>(`auth/signup/`, {
+    return await fetchApi<unknown>(`user/register`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        password: data.password,
+      }),
     });
   },
   logout: async (): Promise<LogoutResponse> => {
-    return await fetchApi<LogoutResponse>(`auth/logout/`, {
+    return await fetchApi<LogoutResponse>(`auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,7 +64,7 @@ const authentication = {
   forgotPassword: async (
     data: ForgotPasswordRequest,
   ): Promise<ForgotPasswordResponse> => {
-    return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password/`, {
+    return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -70,7 +75,7 @@ const authentication = {
   resetPassword: async (
     data: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> => {
-    return await fetchApi<ResetPasswordResponse>(`auth/reset-password/`, {
+    return await fetchApi<ResetPasswordResponse>(`auth/reset-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

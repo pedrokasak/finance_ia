@@ -1,10 +1,15 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"finance-ia/internal/application/usecase/auth"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	jwtv4 "github.com/golang-jwt/jwt/v4"
 )
 
 type AuthHandler struct {
@@ -51,11 +56,50 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	if strings.Count(token, ".") == 2 {
+		token, err = attachFingerprintClaim(token, requestFingerprint(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to secure session token"})
+			return
+		}
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"email":   req.Email,
 		"token":   token,
 		"success": true,
 	})
+}
+
+func requestFingerprint(c *gin.Context) string {
+	ua := c.GetHeader("User-Agent")
+	al := c.GetHeader("Accept-Language")
+	ip := c.ClientIP()
+	raw := strings.Join([]string{ip, ua, al}, "|")
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:])
+}
+
+func attachFingerprintClaim(tokenString, fingerprint string) (string, error) {
+	secret := os.Getenv("JWT_SECRET")
+	parsed, err := jwtv4.Parse(tokenString, func(t *jwtv4.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwtv4.SigningMethodHMAC); !ok {
+			return nil, jwtv4.ErrTokenSignatureInvalid
+		}
+		return []byte(secret), nil
+	})
+	if err != nil || !parsed.Valid {
+		return "", jwtv4.ErrTokenMalformed
+	}
+
+	claims, ok := parsed.Claims.(jwtv4.MapClaims)
+	if !ok {
+		return "", jwtv4.ErrTokenMalformed
+	}
+	claims["fp"] = fingerprint
+
+	signed := jwtv4.NewWithClaims(jwtv4.SigningMethodHS256, claims)
+	return signed.SignedString([]byte(secret))
 }
 
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {

@@ -42,6 +42,8 @@ func NewRouter(registrars ...RouteRegistrar) *gin.Engine {
 	}
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+	r.Use(middleware.RequestBodyLimit(2 * 1024 * 1024))
+	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS())
 
 	public := r.Group("/api/v1")

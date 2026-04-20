@@ -25,7 +25,7 @@ type TransactionRepository interface {
 	FindByPeriod(userID uuid.UUID, start, end time.Time) ([]*Transaction, error)
 	Update(tx *Transaction) error
 	Delete(id uuid.UUID, userID uuid.UUID) error
-	FindByIdempotencyKey(key string) (*Transaction, error)
+	FindByIdempotencyKey(userID uuid.UUID, key string) (*Transaction, error)
 }
 
 // CategoryRepository defines persistence operations for categories

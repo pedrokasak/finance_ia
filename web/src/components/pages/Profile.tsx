@@ -36,6 +36,11 @@ import {
 } from "@/components/ui/dialog";
 import { FinancialMethodModal } from "@/components/finance/FinancialMethodModal";
 import { useUser } from "@/contexts/UserContext";
+import {
+  hasAllowedMagicBytes,
+  isTrustedAvatarDataUrl,
+  validateAvatarFile,
+} from "@/utils/avatar";
 
 interface UserInfo {
   id: string;
@@ -252,14 +257,39 @@ export function Profile() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setAvatarUrl(base64);
-        // Propaga imediatamente para o Header
-        updateAvatar(base64);
-      };
-      reader.readAsDataURL(file);
+      const validationError = validateAvatarFile(file);
+      if (validationError) {
+        toast.error(validationError);
+        e.target.value = "";
+        return;
+      }
+
+      file
+        .arrayBuffer()
+        .then((buffer) => {
+          if (!hasAllowedMagicBytes(buffer)) {
+            toast.error("Arquivo inválido. Não foi possível validar a imagem.");
+            e.target.value = "";
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            if (!isTrustedAvatarDataUrl(base64)) {
+              toast.error("Imagem inválida.");
+              e.target.value = "";
+              return;
+            }
+            setAvatarUrl(base64);
+            // Propaga imediatamente para o Header
+            updateAvatar(base64);
+          };
+          reader.readAsDataURL(file);
+        })
+        .catch(() => {
+          toast.error("Erro ao processar imagem.");
+        });
     }
   };
 
@@ -287,11 +317,13 @@ export function Profile() {
           <CardContent className="space-y-6">
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20 text-2xl">
-                <AvatarImage
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="object-cover"
-                />
+                {isTrustedAvatarDataUrl(avatarUrl) ? (
+                  <AvatarImage
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="object-cover"
+                  />
+                ) : null}
                 <AvatarFallback className="bg-primary/10 text-primary text-xl font-bold">
                   {initials}
                 </AvatarFallback>
@@ -352,7 +384,7 @@ export function Profile() {
                 <Input
                   id="avatar-upload"
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/webp"
                   onChange={handleFileChange}
                 />
               </div>

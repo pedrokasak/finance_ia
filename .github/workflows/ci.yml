@@ -123,3 +123,78 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Integration & Security (Postgres + Newman) ──────────────────────────
+  integration-security:
+    name: Integration — Postgres + Newman
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: finance_ia_test
+          POSTGRES_USER: finance_user
+          POSTGRES_PASSWORD: finance_pass
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U finance_user -d finance_ia_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://finance_user:finance_pass@localhost:5432/finance_ia_test?sslmode=disable
+      TEST_DATABASE_URL: postgres://finance_user:finance_pass@localhost:5432/finance_ia_test?sslmode=disable
+      APP_PORT: "8081"
+      JWT_SECRET: "integration-test-secret"
+      APP_ENV: "test"
+      GO_VERSION: "1.24"
+      NODE_VERSION: "20"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install Newman
+        run: npm install -g newman
+
+      - name: Run integration tests on Postgres-backed repositories
+        run: |
+          cd server
+          go test ./internal/infrastructure/database/finance -v
+
+      - name: Start API server
+        run: |
+          cd server
+          nohup go run main.go > /tmp/finance-ia-server.log 2>&1 &
+
+      - name: Wait for API health
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8081/api/v1/health >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "API did not become healthy in time"
+          cat /tmp/finance-ia-server.log || true
+          exit 1
+
+      - name: Run Postman collection (Newman)
+        run: |
+          newman run server/postman/finance-ia.postman_collection.json \
+            --environment server/postman/local.postman_environment.json \
+            --timeout-request 10000 \
+            --timeout 180000
+
+      - name: Dump API logs on failure
+        if: failure()
+        run: cat /tmp/finance-ia-server.log || true

@@ -42,7 +42,7 @@ func (s *Service) CreateTransaction(tx *Transaction) error {
 
 	// Check idempotency
 	if tx.IdempotencyKey != "" {
-		existing, err := s.txRepo.FindByIdempotencyKey(tx.IdempotencyKey)
+		existing, err := s.txRepo.FindByIdempotencyKey(tx.UserID, tx.IdempotencyKey)
 		if err == nil && existing != nil {
 			*tx = *existing
 			return nil // Already created — idempotent response

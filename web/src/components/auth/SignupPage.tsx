@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AuthProps } from "./types";
+import { toast } from "sonner";
+import { errorHandler } from "../../utils/errors";
+import useAuth from "../../hooks/use-auth";
 
 export function SignupPage({ onNavigate }: AuthProps) {
   const [showPassword, setShowPassword] = useState(false);
@@ -28,7 +31,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
     confirmPassword: "",
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+  const { signup, loading } = useAuth();
 
   const passwordRequirements = [
     { text: "Pelo menos 8 caracteres", met: formData.password.length >= 8 },
@@ -39,16 +43,39 @@ export function SignupPage({ onNavigate }: AuthProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError("");
+
     if (formData.password !== formData.confirmPassword) return;
     if (!acceptTerms) return;
 
-    setIsLoading(true);
+    const fullName = formData.name.trim();
+    const [firstName, ...lastNameParts] = fullName.split(/\s+/);
+    const lastName = lastNameParts.join(" ");
 
-    // Simular cadastro
-    setTimeout(() => {
-      setIsLoading(false);
-      onNavigate("app");
-    }, 2000);
+    try {
+      const response = await signup({
+        firstName: firstName || "",
+        lastName,
+        email: formData.email.trim(),
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        acceptTerms,
+      });
+
+      if (response.success) {
+        toast.success("Conta criada com sucesso!");
+        onNavigate("app");
+        return;
+      }
+
+      const message = response.error || "Falha ao criar conta";
+      setFormError(message);
+      toast.error(message);
+    } catch (error) {
+      const message = errorHandler.handle(error);
+      setFormError(message);
+      toast.error(message);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -74,7 +101,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
               placeholder="Seu nome completo"
               value={formData.name}
               onChange={(e) => handleInputChange("name", e.target.value)}
-              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              disabled={loading}
+              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
           </div>
@@ -93,7 +121,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
               placeholder="seu@email.com"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
-              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              disabled={loading}
+              className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
           </div>
@@ -112,13 +141,15 @@ export function SignupPage({ onNavigate }: AuthProps) {
               placeholder="••••••••"
               value={formData.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
-              className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              disabled={loading}
+              className="pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+              disabled={loading}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50"
             >
               {showPassword ? (
                 <EyeOff className="h-4 w-4" />
@@ -172,8 +203,9 @@ export function SignupPage({ onNavigate }: AuthProps) {
               onChange={(e) =>
                 handleInputChange("confirmPassword", e.target.value)
               }
+              disabled={loading}
               className={cn(
-                "pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500",
+                "pl-10 pr-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed",
                 formData.confirmPassword &&
                   formData.password !== formData.confirmPassword &&
                   "border-red-300 focus:border-red-500 focus:ring-red-500",
@@ -183,7 +215,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+              disabled={loading}
+              className="absolute right-3 top-3 text-gray-400 hover:text-gray-600 disabled:opacity-50"
             >
               {showConfirmPassword ? (
                 <EyeOff className="h-4 w-4" />
@@ -204,6 +237,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
             id="terms"
             checked={acceptTerms}
             onCheckedChange={(checked) => setAcceptTerms(checked === true)}
+            disabled={loading}
             className="mt-1"
           />
           <Label
@@ -227,17 +261,23 @@ export function SignupPage({ onNavigate }: AuthProps) {
           </Label>
         </div>
 
+        {formError && (
+          <div className="bg-red-50 border-l-4 border-red-400 p-4 rounded">
+            <p className="text-sm text-red-700">{formError}</p>
+          </div>
+        )}
+
         {/* Botão de Cadastro */}
         <Button
           type="submit"
           className="w-full h-12 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:scale-[1.02]"
           disabled={
-            isLoading ||
+            loading ||
             !acceptTerms ||
             formData.password !== formData.confirmPassword
           }
         >
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
               <span>Criando conta...</span>
@@ -261,6 +301,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
             type="button"
             variant="outline"
             className="h-12 border-gray-300 hover:bg-gray-50"
+            disabled={loading}
           >
             <Chrome className="h-4 w-4 mr-2" />
             Google
@@ -269,6 +310,7 @@ export function SignupPage({ onNavigate }: AuthProps) {
             type="button"
             variant="outline"
             className="h-12 border-gray-300 hover:bg-gray-50"
+            disabled={loading}
           >
             <Github className="h-4 w-4 mr-2" />
             GitHub
@@ -282,7 +324,8 @@ export function SignupPage({ onNavigate }: AuthProps) {
             <button
               type="button"
               onClick={() => onNavigate("login")}
-              className="text-blue-600 hover:text-blue-700 font-medium"
+              disabled={loading}
+              className="text-blue-600 hover:text-blue-700 font-medium disabled:opacity-50"
             >
               Fazer login
             </button>

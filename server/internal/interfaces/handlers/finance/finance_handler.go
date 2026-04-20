@@ -41,10 +41,10 @@ type createTransactionRequest struct {
 	CategoryID     *string `json:"category_id"`
 	Type           string  `json:"type" binding:"required,oneof=income expense"`
 	Amount         float64 `json:"amount" binding:"required,gt=0"`
-	Description    string  `json:"description"`
+	Description    string  `json:"description" binding:"max=280"`
 	Date           string  `json:"date"` // ISO 8601
 	IsRecurring    bool    `json:"is_recurring"`
-	IdempotencyKey string  `json:"idempotency_key"`
+	IdempotencyKey string  `json:"idempotency_key" binding:"max=128"`
 }
 
 func (h *FinanceHandler) CreateTransaction(c *gin.Context) {
@@ -95,7 +95,7 @@ type updateTransactionRequest struct {
 	CategoryID  *string `json:"category_id"`
 	Type        string  `json:"type" binding:"required,oneof=income expense"`
 	Amount      float64 `json:"amount" binding:"required,gt=0"`
-	Description string  `json:"description"`
+	Description string  `json:"description" binding:"max=280"`
 	Date        string  `json:"date"` // ISO 8601
 	IsRecurring bool    `json:"is_recurring"`
 }
@@ -227,10 +227,10 @@ func (h *FinanceHandler) ListFinancialMethods(c *gin.Context) {
 }
 
 type createCategoryRequest struct {
-	Name  string `json:"name" binding:"required"`
+	Name  string `json:"name" binding:"required,min=1,max=80"`
 	Type  string `json:"type" binding:"required,oneof=income expense"`
-	Color string `json:"color"`
-	Icon  string `json:"icon"`
+	Color string `json:"color" binding:"max=32"`
+	Icon  string `json:"icon" binding:"max=32"`
 }
 
 func (h *FinanceHandler) CreateCategory(c *gin.Context) {
@@ -259,9 +259,9 @@ func (h *FinanceHandler) CreateCategory(c *gin.Context) {
 }
 
 type updateCategoryRequest struct {
-	Name  string `json:"name"`
-	Color string `json:"color"`
-	Icon  string `json:"icon"`
+	Name  string `json:"name" binding:"omitempty,max=80"`
+	Color string `json:"color" binding:"omitempty,max=32"`
+	Icon  string `json:"icon" binding:"omitempty,max=32"`
 }
 
 func (h *FinanceHandler) UpdateCategory(c *gin.Context) {
@@ -367,4 +367,3 @@ func (h *FinanceHandler) GetDashboard(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, summary)
 }
-

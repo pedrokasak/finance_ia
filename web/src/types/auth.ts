@@ -9,6 +9,9 @@ export type SignupRequest = {
 
 export type SignupResponse = {
   success: boolean;
+  email?: string;
+  token?: string;
+  error?: string;
 };
 
 export type LoginRequest = {

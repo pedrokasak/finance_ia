@@ -3,22 +3,30 @@ package finance_test
 import (
 	"finance-ia/internal/domain/finance"
 	infraFinance "finance-ia/internal/infrastructure/database/finance"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/driver/sqlite"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func setupTestDB(t *testing.T) *gorm.DB {
-	db, err := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set; skipping postgres integration repository tests")
+	}
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
 
+	require.NoError(t, db.Exec("CREATE EXTENSION IF NOT EXISTS pgcrypto").Error)
 	err = db.AutoMigrate(&finance.Transaction{}, &finance.Category{}, &finance.Budget{}, &finance.FinancialMethod{})
 	require.NoError(t, err)
+	require.NoError(t, db.Exec("TRUNCATE TABLE transactions, categories, budgets, financial_methods RESTART IDENTITY CASCADE").Error)
 
 	return db
 }
@@ -88,12 +96,12 @@ func TestPostgresTransactionRepository(t *testing.T) {
 		}
 		repo.Create(tx2)
 
-		found, err := repo.FindByIdempotencyKey("test-key-123")
+		found, err := repo.FindByIdempotencyKey(userID, "test-key-123")
 		assert.NoError(t, err)
 		assert.NotNil(t, found)
 		assert.Equal(t, tx2.ID, found.ID)
 
-		_, err = repo.FindByIdempotencyKey("not-exist")
+		_, err = repo.FindByIdempotencyKey(userID, "not-exist")
 		assert.Error(t, err)
 	})
 

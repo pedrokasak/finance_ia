@@ -106,3 +106,22 @@ func (r *TokenRepository) InvalidateUserTokens(userID string) error {
 	
 	return result.Error
 }
+
+// ConsumeResetToken atomically marks a reset token as used and returns it.
+func (r *TokenRepository) ConsumeResetToken(token string) (*PasswordResetToken, error) {
+	result := r.db.Model(&PasswordResetToken{}).
+		Where("token = ? AND used = ? AND expires_at > ?", token, false, time.Now()).
+		Update("used", true)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return nil, errors.New("invalid or expired token")
+	}
+
+	consumed := &PasswordResetToken{}
+	if err := r.db.Where("token = ?", token).First(consumed).Error; err != nil {
+		return nil, err
+	}
+	return consumed, nil
+}

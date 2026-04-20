@@ -2,9 +2,12 @@ package resilience
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"sync"
 	"time"
 
@@ -19,14 +22,17 @@ type idempotencyStore struct {
 }
 
 type cachedResponse struct {
-	StatusCode int
-	Body       json.RawMessage
-	ExpiresAt  time.Time
+	StatusCode  int
+	Body        json.RawMessage
+	ExpiresAt   time.Time
+	PayloadHash string
 }
 
 var defaultStore = &idempotencyStore{
 	store: make(map[string]*cachedResponse),
 }
+
+var idempotencyKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-:.]{8,128}$`)
 
 // IdempotencyMiddleware validates and caches responses by Idempotency-Key header.
 // If a request with the same key was already processed, the cached response is returned.
@@ -43,13 +49,34 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		if !idempotencyKeyPattern.MatchString(key) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid Idempotency-Key format"})
+			c.Abort()
+			return
+		}
+
+		body, err := ReadBody(c.Request)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read request body"})
+			c.Abort()
+			return
+		}
+		payloadHash := fmt.Sprintf("%x", sha256.Sum256(body))
+
+		userScope, _ := c.Get("user_id")
+		scopedKey := fmt.Sprintf("%v|%s|%s|%s", userScope, c.Request.Method, c.FullPath(), key)
 
 		// Check cache
 		defaultStore.mu.RLock()
-		cached, found := defaultStore.store[key]
+		cached, found := defaultStore.store[scopedKey]
 		defaultStore.mu.RUnlock()
 
 		if found && time.Now().Before(cached.ExpiresAt) {
+			if cached.PayloadHash != payloadHash {
+				c.JSON(http.StatusConflict, gin.H{"error": "Idempotency-Key reused with different payload"})
+				c.Abort()
+				return
+			}
 			c.Data(cached.StatusCode, "application/json", cached.Body)
 			c.Abort()
 			return
@@ -64,10 +91,11 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 		// Cache the response for 24 hours
 		if writer.status >= 200 && writer.status < 300 {
 			defaultStore.mu.Lock()
-			defaultStore.store[key] = &cachedResponse{
-				StatusCode: writer.status,
-				Body:       json.RawMessage(writer.body.Bytes()),
-				ExpiresAt:  time.Now().Add(24 * time.Hour),
+			defaultStore.store[scopedKey] = &cachedResponse{
+				StatusCode:  writer.status,
+				Body:        json.RawMessage(writer.body.Bytes()),
+				ExpiresAt:   time.Now().Add(24 * time.Hour),
+				PayloadHash: payloadHash,
 			}
 			defaultStore.mu.Unlock()
 		}
