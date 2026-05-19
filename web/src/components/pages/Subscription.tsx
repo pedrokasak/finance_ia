@@ -88,16 +88,28 @@ export function Subscription() {
     }
   }, []);
 
-  const { data: subData, isLoading: loadingSub } = useQuery({
+  const {
+    data: subData,
+    isLoading: loadingSub,
+    isError: subError,
+  } = useQuery({
     queryKey: ['subscription'],
     queryFn: () => api.get('/subscription/').then((r) => r.data),
     staleTime: 1000 * 30, // 30s
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: plansData, isLoading: loadingPlans } = useQuery({
+  const {
+    data: plansData,
+    isLoading: loadingPlans,
+    isError: plansError,
+  } = useQuery({
     queryKey: ['subscription-plans'],
     queryFn: () => api.get('/subscription/plans').then((r) => r.data),
     staleTime: 1000 * 60 * 5, // 5min — plans rarely change
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const { data: invoicesData } = useQuery({
@@ -107,6 +119,7 @@ export function Subscription() {
   });
 
   const loadingData = loadingSub || loadingPlans;
+  const planRequestFailed = subError || plansError;
 
   const subInfo: SubscriptionInfo = {
     plan: subData?.subscription?.plan || subData?.plan || 'free',
@@ -117,7 +130,7 @@ export function Subscription() {
 
   const invoices: Invoice[] = invoicesData?.invoices || invoicesData || [];
 
-  const plans: Plan[] = (plansData?.plans || []).map((p: Plan) => ({
+  const backendPlans: Plan[] = (plansData?.plans || []).map((p: Plan) => ({
     id: p.slug, // use slug as id so plan.id === currentPlan works
     slug: p.slug,
     name: p.name,
@@ -129,6 +142,42 @@ export function Subscription() {
     popular: planVisuals[p.slug]?.popular ?? false,
     is_active: p.is_active,
   }));
+
+  const fallbackPlans: Plan[] = [
+    {
+      id: 'free',
+      slug: 'free',
+      name: 'Básico',
+      description: 'Perfeito para começar',
+      price_monthly: 0,
+      price_yearly: 0,
+      features: ['Controle básico de receitas e despesas'],
+      is_active: true,
+    },
+    {
+      id: 'pro',
+      slug: 'pro',
+      name: 'Pro',
+      description: 'Ideal para controle avançado',
+      price_monthly: 29.9,
+      price_yearly: 299,
+      features: ['Transações ilimitadas', 'Relatórios avançados'],
+      is_active: true,
+    },
+    {
+      id: 'premium',
+      slug: 'premium',
+      name: 'Premium',
+      description: 'Máximo controle financeiro com IA',
+      price_monthly: 49.9,
+      price_yearly: 499,
+      features: ['Todos os recursos do Pro', 'Análise de IA personalizada'],
+      is_active: true,
+    },
+  ];
+
+  const plans: Plan[] =
+    backendPlans.length > 0 ? backendPlans : fallbackPlans;
 
   const currentPlan = subInfo.plan || 'free';
   const isPaidPlan = currentPlan !== 'free';
@@ -216,6 +265,12 @@ export function Subscription() {
       </div>
 
       {/* Cards dos Planos */}
+      {planRequestFailed && (
+        <div className="text-center text-sm text-amber-600">
+          Não foi possível sincronizar todos os dados de assinatura agora.
+          Exibindo planos padrão.
+        </div>
+      )}
       {loadingData ? (
         <div className="flex justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

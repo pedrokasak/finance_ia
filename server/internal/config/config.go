@@ -6,14 +6,14 @@ import (
 )
 
 type Config struct {
-	AppPort        string
+	AppPort     string
 	DatabaseURL string
 	JWTSecret   string
 }
 
 func Load() *Config {
 	return &Config{
-		AppPort:        GetEnv("APP_PORT"),
+		AppPort:     GetEnv("APP_PORT"),
 		DatabaseURL: GetEnv("DATABASE_URL"),
 		JWTSecret:   GetEnv("JWT_SECRET"),
 	}

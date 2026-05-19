@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"finance-ia/internal/config/middleware"
+	"finance-ia/internal/config/observability"
 	"finance-ia/internal/config/resilience"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type RouteRegistrar interface {
@@ -45,6 +47,7 @@ func NewRouter(registrars ...RouteRegistrar) *gin.Engine {
 	r.Use(middleware.RequestBodyLimit(2 * 1024 * 1024))
 	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS())
+	r.Use(observability.PrometheusMiddleware())
 
 	public := r.Group("/api/v1")
 	protected := r.Group("/api/v1", middleware.JWTAuth(), resilience.IdempotencyMiddleware())
@@ -54,6 +57,7 @@ func NewRouter(registrars ...RouteRegistrar) *gin.Engine {
 	}
 
 	public.GET("/health", func(c *gin.Context) { c.JSON(200, gin.H{"status": "ok"}) })
+	r.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	return r
 }

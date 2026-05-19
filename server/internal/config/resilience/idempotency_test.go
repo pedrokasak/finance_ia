@@ -93,4 +93,3 @@ func TestIdempotency_SameKeyDifferentUser_IsolatedScope(t *testing.T) {
 	assert.Equal(t, http.StatusCreated, res2.Code)
 	assert.NotEqual(t, res1.Body.String(), res2.Body.String())
 }
-

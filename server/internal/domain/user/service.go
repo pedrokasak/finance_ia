@@ -39,13 +39,13 @@ func (s *Service) GetAll() ([]*User, error) {
 
 func (s *Service) GetByID(id uuid.UUID) (*User, error) {
 	if id == uuid.Nil {
-        return nil, errors.New("invalid ID")
-    }
+		return nil, errors.New("invalid ID")
+	}
 	user, err := s.repo.FindByID(id)
 	if err != nil {
-			return nil, err
+		return nil, err
 	}
-  return user, nil
+	return user, nil
 }
 
 func (s *Service) GetByEmail(email string) (*User, error) {
@@ -54,17 +54,17 @@ func (s *Service) GetByEmail(email string) (*User, error) {
 
 func (s *Service) Update(user *User) error {
 	if user.ID == uuid.Nil {
-			return errors.New("ID invalid")
+		return errors.New("ID invalid")
 	}
 	if user.FirstName == "" || user.Email == "" {
-			return errors.New("required fields are missing")
+		return errors.New("required fields are missing")
 	}
 	return s.repo.Update(user)
 }
 
 func (s *Service) Delete(user *User) error {
 	if user.ID == uuid.Nil {
-			return errors.New("invalid ID")
+		return errors.New("invalid ID")
 	}
 	return s.repo.Delete(user)
 }

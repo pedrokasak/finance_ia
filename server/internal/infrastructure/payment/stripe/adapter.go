@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"finance-ia/internal/domain/payment"
 	"fmt"
+	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/stripe/stripe-go/v76"
@@ -302,4 +304,96 @@ func (a *Adapter) ListActiveSubscriptions(customerID string) ([]*payment.Subscri
 		return nil, fmt.Errorf("stripe: list active subscriptions: %w", err)
 	}
 	return result, nil
+}
+
+const planSlugMetadataKey = "finance_plan_slug"
+
+// EnsurePlanCatalog guarantees that a paid plan has one product and two recurring prices in Stripe.
+// It is idempotent: finds reusable objects first, creates only when missing.
+func (a *Adapter) EnsurePlanCatalog(slug, name, description string, monthly, yearly float64, currency string) (string, string, string, error) {
+	productID, err := a.findProductByPlanSlug(slug)
+	if err != nil {
+		return "", "", "", err
+	}
+	if productID == "" {
+		params := &stripe.ProductParams{
+			Name:        stripe.String(name),
+			Description: stripe.String(description),
+			Metadata: map[string]string{
+				planSlugMetadataKey: slug,
+			},
+		}
+		p, createErr := product.New(params)
+		if createErr != nil {
+			return "", "", "", fmt.Errorf("stripe: create product: %w", createErr)
+		}
+		productID = p.ID
+	}
+
+	monthlyID, err := a.findRecurringPriceID(productID, monthly, currency, "month")
+	if err != nil {
+		return "", "", "", err
+	}
+	if monthlyID == "" {
+		monthlyID, err = a.CreatePrice(productID, monthly, currency, "month")
+		if err != nil {
+			return "", "", "", err
+		}
+	}
+
+	yearlyID, err := a.findRecurringPriceID(productID, yearly, currency, "year")
+	if err != nil {
+		return "", "", "", err
+	}
+	if yearlyID == "" {
+		yearlyID, err = a.CreatePrice(productID, yearly, currency, "year")
+		if err != nil {
+			return "", "", "", err
+		}
+	}
+
+	return productID, monthlyID, yearlyID, nil
+}
+
+func (a *Adapter) findProductByPlanSlug(slug string) (string, error) {
+	params := &stripe.ProductListParams{}
+	params.Filters.AddFilter("limit", "", "100")
+	iter := product.List(params)
+	for iter.Next() {
+		p := iter.Product()
+		if p != nil && p.Metadata != nil && p.Metadata[planSlugMetadataKey] == slug {
+			return p.ID, nil
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return "", fmt.Errorf("stripe: list products: %w", err)
+	}
+	return "", nil
+}
+
+func (a *Adapter) findRecurringPriceID(productID string, amount float64, currency string, interval string) (string, error) {
+	params := &stripe.PriceListParams{
+		Product: stripe.String(productID),
+		Active:  stripe.Bool(true),
+	}
+	params.Filters.AddFilter("limit", "", "100")
+
+	wantCents := int64(math.Round(amount * 100))
+	wantCurrency := strings.ToLower(currency)
+	iter := price.List(params)
+	for iter.Next() {
+		p := iter.Price()
+		if p == nil || p.Recurring == nil {
+			continue
+		}
+		if p.UnitAmount == wantCents &&
+			strings.EqualFold(string(p.Currency), wantCurrency) &&
+			string(p.Recurring.Interval) == interval {
+			return p.ID, nil
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return "", fmt.Errorf("stripe: list prices: %w", err)
+	}
+	return "", nil
 }

@@ -2,16 +2,19 @@ package resilience
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 // idempotencyStore is a simple in-memory store for idempotency keys
@@ -33,6 +36,29 @@ var defaultStore = &idempotencyStore{
 }
 
 var idempotencyKeyPattern = regexp.MustCompile(`^[a-zA-Z0-9_\-:.]{8,128}$`)
+var redisInit sync.Once
+var redisClient *redis.Client
+
+func getRedisClient() *redis.Client {
+	redisInit.Do(func() {
+		url := os.Getenv("REDIS_URL")
+		if url == "" {
+			return
+		}
+		opts, err := redis.ParseURL(url)
+		if err != nil {
+			return
+		}
+		c := redis.NewClient(opts)
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := c.Ping(ctx).Err(); err != nil {
+			return
+		}
+		redisClient = c
+	})
+	return redisClient
+}
 
 // IdempotencyMiddleware validates and caches responses by Idempotency-Key header.
 // If a request with the same key was already processed, the cached response is returned.
@@ -65,11 +91,7 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 
 		userScope, _ := c.Get("user_id")
 		scopedKey := fmt.Sprintf("%v|%s|%s|%s", userScope, c.Request.Method, c.FullPath(), key)
-
-		// Check cache
-		defaultStore.mu.RLock()
-		cached, found := defaultStore.store[scopedKey]
-		defaultStore.mu.RUnlock()
+		cached, found := getCachedResponse(c.Request.Context(), scopedKey)
 
 		if found && time.Now().Before(cached.ExpiresAt) {
 			if cached.PayloadHash != payloadHash {
@@ -90,14 +112,12 @@ func IdempotencyMiddleware() gin.HandlerFunc {
 
 		// Cache the response for 24 hours
 		if writer.status >= 200 && writer.status < 300 {
-			defaultStore.mu.Lock()
-			defaultStore.store[scopedKey] = &cachedResponse{
+			setCachedResponse(c.Request.Context(), scopedKey, &cachedResponse{
 				StatusCode:  writer.status,
 				Body:        json.RawMessage(writer.body.Bytes()),
 				ExpiresAt:   time.Now().Add(24 * time.Hour),
 				PayloadHash: payloadHash,
-			}
-			defaultStore.mu.Unlock()
+			})
 		}
 
 		// Periodic cleanup of expired keys
@@ -142,6 +162,36 @@ func cleanupExpiredKeys() {
 	for k, v := range defaultStore.store {
 		if now.After(v.ExpiresAt) {
 			delete(defaultStore.store, k)
+		}
+	}
+}
+
+func getCachedResponse(ctx context.Context, scopedKey string) (*cachedResponse, bool) {
+	if c := getRedisClient(); c != nil {
+		val, err := c.Get(ctx, "idempo:"+scopedKey).Result()
+		if err == nil {
+			var cached cachedResponse
+			if unmarshalErr := json.Unmarshal([]byte(val), &cached); unmarshalErr == nil {
+				return &cached, true
+			}
+		}
+	}
+
+	defaultStore.mu.RLock()
+	cached, found := defaultStore.store[scopedKey]
+	defaultStore.mu.RUnlock()
+	return cached, found
+}
+
+func setCachedResponse(ctx context.Context, scopedKey string, value *cachedResponse) {
+	defaultStore.mu.Lock()
+	defaultStore.store[scopedKey] = value
+	defaultStore.mu.Unlock()
+
+	if c := getRedisClient(); c != nil {
+		raw, err := json.Marshal(value)
+		if err == nil {
+			_ = c.Set(ctx, "idempo:"+scopedKey, raw, 24*time.Hour).Err()
 		}
 	}
 }

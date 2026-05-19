@@ -144,4 +144,3 @@ func (h *AIHandler) buildFinancialContext(userID uuid.UUID, plan string) (*ai.Fi
 
 	return ctx, nil
 }
-

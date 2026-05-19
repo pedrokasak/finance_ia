@@ -41,7 +41,7 @@ func (w *ReportWorker) generateMonthlyReportsForAllUsers() {
 	log.Println("Gerando relatórios mensais para todos os usuários...")
 
 	lastMonth := time.Now().AddDate(0, -1, 0)
-	
+
 	var users []user.User
 	if err := w.db.Find(&users).Error; err != nil {
 		log.Printf("Erro ao buscar usuários: %v", err)
@@ -71,8 +71,8 @@ func (w *ReportWorker) generateUserMonthlyReport(userID uuid.UUID, year int, mon
 	// 	Select("COALESCE(SUM(amount), 0)").
 	// 	Scan(&totalExpense)
 
-	log.Printf("Relatório gerado para usuário %s - Receitas: R$ %.2f, Despesas: R$ %.2f", 
+	log.Printf("Relatório gerado para usuário %s - Receitas: R$ %.2f, Despesas: R$ %.2f",
 		userID, totalIncome, totalExpense)
-	
+
 	// Aqui você pode salvar o relatório em uma tabela específica ou enviar por email
 }

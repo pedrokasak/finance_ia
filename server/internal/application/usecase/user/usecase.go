@@ -17,10 +17,10 @@ func NewUseCase(service *user.Service) *UseCase {
 
 func (uc *UseCase) Register(firstName, LastName, email, password string) (*user.User, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-    if err != nil {
-        return nil, err
-    }
-    return uc.service.Register(firstName, LastName, email, string(hashed))
+	if err != nil {
+		return nil, err
+	}
+	return uc.service.Register(firstName, LastName, email, string(hashed))
 }
 
 func (uc *UseCase) GetAll() ([]*user.User, error) {

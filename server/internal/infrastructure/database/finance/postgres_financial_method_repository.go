@@ -59,6 +59,28 @@ func (r *PostgresFinancialMethodRepository) Create(method *finance.FinancialMeth
 func (r *PostgresFinancialMethodRepository) SeedDefaults() error {
 	methods := []finance.FinancialMethod{
 		{
+			Key:         "5-3-2",
+			Name:        "Regra 5-3-2",
+			Tagline:     "Foco em equilíbrio simples",
+			Icon:        "CircleEllipsis",
+			Color:       "text-lime-400",
+			Bg:          "bg-lime-500/10 border-lime-500/30",
+			Description: "50% para necessidades essenciais, 30% para estilo de vida e 20% para investimentos e reserva. Leitura rápida da 50-30-20 em formato compacto.",
+			ForWho:      "Ideal para onboarding rápido com uma regra fácil de memorizar.",
+			SplitRaw:    `[{"label":"Necessidades","percent":50,"color":"bg-lime-500"},{"label":"Estilo de Vida","percent":30,"color":"bg-teal-500"},{"label":"Investimentos","percent":20,"color":"bg-cyan-500"}]`,
+		},
+		{
+			Key:         "60-10-10-10-10",
+			Name:        "Regra 60-10-10-10-10",
+			Tagline:     "Mais granular para metas simultâneas",
+			Icon:        "ListTree",
+			Color:       "text-indigo-400",
+			Bg:          "bg-indigo-500/10 border-indigo-500/30",
+			Description: "60% para custos fixos, 10% para investimentos de longo prazo, 10% para reserva, 10% para lazer e 10% para objetivos pessoais.",
+			ForWho:      "Ideal para quem quer dividir melhor os 40% restantes em metas específicas.",
+			SplitRaw:    `[{"label":"Custos Fixos","percent":60,"color":"bg-indigo-500"},{"label":"Invest. Longo Prazo","percent":10,"color":"bg-violet-500"},{"label":"Reserva","percent":10,"color":"bg-sky-500"},{"label":"Lazer","percent":10,"color":"bg-pink-500"},{"label":"Objetivos","percent":10,"color":"bg-amber-500"}]`,
+		},
+		{
 			Key:         "50-30-20",
 			Name:        "Regra 50-30-20",
 			Tagline:     "O método mais popular do mundo",

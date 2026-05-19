@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-
 type IUserUseCase interface {
 	Register(firstName, lastName, email, password string) (*user.User, error)
 	GetAll() ([]*user.User, error)

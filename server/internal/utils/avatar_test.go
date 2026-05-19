@@ -19,4 +19,3 @@ func TestValidateAvatarDataURL(t *testing.T) {
 	invalidMagic := "data:image/png;base64," + base64.StdEncoding.EncodeToString([]byte("hello"))
 	assert.Error(t, ValidateAvatarDataURL(invalidMagic))
 }
-

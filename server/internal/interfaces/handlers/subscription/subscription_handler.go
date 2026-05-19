@@ -4,12 +4,14 @@ import (
 	"finance-ia/internal/domain/payment"
 	"finance-ia/internal/domain/subscription"
 	"finance-ia/internal/domain/user"
-	"finance-ia/internal/utils"
 	dbsub "finance-ia/internal/infrastructure/database/subscription"
+	paymentprovider "finance-ia/internal/infrastructure/payment/provider"
+	"finance-ia/internal/utils"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,6 +20,7 @@ import (
 
 type SubscriptionHandler struct {
 	gateway          payment.PaymentGateway
+	paymentProvider  string
 	subscriptionRepo subscription.SubscriptionRepository
 	planRepo         *dbsub.PlanRepository
 	userRepo         user.Repository
@@ -26,6 +29,7 @@ type SubscriptionHandler struct {
 
 func NewSubscriptionHandler(
 	gateway payment.PaymentGateway,
+	paymentProvider string,
 	subscriptionRepo subscription.SubscriptionRepository,
 	planRepo *dbsub.PlanRepository,
 	userRepo user.Repository,
@@ -33,6 +37,7 @@ func NewSubscriptionHandler(
 ) *SubscriptionHandler {
 	return &SubscriptionHandler{
 		gateway:          gateway,
+		paymentProvider:  paymentprovider.Normalize(paymentProvider),
 		subscriptionRepo: subscriptionRepo,
 		planRepo:         planRepo,
 		userRepo:         userRepo,
@@ -51,6 +56,7 @@ func (h *SubscriptionHandler) RegisterRoutes(public, protected gin.IRouter) {
 	}
 
 	public.POST("/webhook/stripe", h.HandleStripeWebhook)
+	public.POST("/webhook/abacatepay", h.HandleAbacatePayWebhook)
 }
 
 // GetPlans returns all active plans from the database (with Stripe Price IDs)
@@ -81,7 +87,7 @@ func (h *SubscriptionHandler) GetMySubscription(c *gin.Context) {
 
 	// No local record (or free) — check if user has a Stripe customer with active subscription
 	// This auto-heals when webhooks were missed during development
-	if u != nil && u.StripeCustomerID != "" {
+	if h.paymentProvider == paymentprovider.Stripe && u != nil && u.StripeCustomerID != "" {
 		if stripeSub, serr := h.syncSubscriptionFromStripe(u); serr == nil && stripeSub != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"subscription": stripeSub,
@@ -214,12 +220,15 @@ func (h *SubscriptionHandler) CreateCheckout(c *gin.Context) {
 		h.db.Model(&user.User{}).Where("id = ?", u.ID).Update("stripe_customer_id", customerID)
 	}
 
-	// Determine price ID: first try from DB plan, then fall back to env vars
-	priceID := h.getPriceIDFromDB(req.Plan, req.BillingType)
+	// Determine checkout item id according to payment provider.
+	// Stripe => recurring price id
+	// AbacatePay => recurring product id (cycle defined in product)
+	priceID := h.getCheckoutItemID(req.Plan, req.BillingType)
 	if priceID == "" {
-		priceID = getPriceIDFromEnv(req.Plan, req.BillingType)
-	}
-	if priceID == "" {
+		if h.paymentProvider == paymentprovider.AbacatePay {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "abacatepay product not configured for this plan. Set ABACATEPAY_PRODUCT_PRO / ABACATEPAY_PRODUCT_PREMIUM (and *_YEARLY)."})
+			return
+		}
 		c.JSON(http.StatusBadRequest, gin.H{"error": "stripe price not configured for this plan. Set STRIPE_PRICE_PRO or STRIPE_PRICE_PREMIUM env vars."})
 		return
 	}
@@ -245,7 +254,33 @@ func (h *SubscriptionHandler) CreateCheckout(c *gin.Context) {
 	})
 }
 
-// getPriceIDFromDB fetches the Stripe Price ID from the plans table
+func (h *SubscriptionHandler) getCheckoutItemID(plan, billingType string) string {
+	if h.paymentProvider == paymentprovider.AbacatePay {
+		id := h.getAbacateProductIDFromDB(plan, billingType)
+		if id != "" {
+			return id
+		}
+		return getAbacateProductIDFromEnv(plan, billingType)
+	}
+	id := h.getPriceIDFromDB(plan, billingType)
+	if id != "" {
+		return id
+	}
+	return getPriceIDFromEnv(plan, billingType)
+}
+
+func (h *SubscriptionHandler) getAbacateProductIDFromDB(plan, billingType string) string {
+	p, err := h.planRepo.FindBySlug(plan)
+	if err != nil {
+		return ""
+	}
+	if billingType == "yearly" {
+		return p.StripePriceIDYearly
+	}
+	return p.StripePriceIDMonthly
+}
+
+// getPriceIDFromDB fetches the Stripe Price ID from the plans table.
 func (h *SubscriptionHandler) getPriceIDFromDB(plan, billingType string) string {
 	p, err := h.planRepo.FindBySlug(plan)
 	if err != nil {
@@ -257,9 +292,17 @@ func (h *SubscriptionHandler) getPriceIDFromDB(plan, billingType string) string 
 	return p.StripePriceIDMonthly
 }
 
-// getPriceIDFromEnv falls back to env var configuration (backwards compat)
+// getPriceIDFromEnv falls back to env var configuration (backwards compat).
 func getPriceIDFromEnv(plan, billingType string) string {
-	envKey := "STRIPE_PRICE_" + plan
+	envKey := "STRIPE_PRICE_" + strings.ToUpper(plan)
+	if billingType == "yearly" {
+		envKey += "_YEARLY"
+	}
+	return os.Getenv(envKey)
+}
+
+func getAbacateProductIDFromEnv(plan, billingType string) string {
+	envKey := "ABACATEPAY_PRODUCT_" + strings.ToUpper(plan)
 	if billingType == "yearly" {
 		envKey += "_YEARLY"
 	}
@@ -267,6 +310,10 @@ func getPriceIDFromEnv(plan, billingType string) string {
 }
 
 func (h *SubscriptionHandler) CreatePortal(c *gin.Context) {
+	if h.paymentProvider == paymentprovider.AbacatePay {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "billing portal is unavailable for abacatepay provider"})
+		return
+	}
 	userIDVal := utils.GetUserID(c)
 
 	u, err := h.userRepo.FindByID(userIDVal)
@@ -291,13 +338,29 @@ func (h *SubscriptionHandler) CreatePortal(c *gin.Context) {
 }
 
 func (h *SubscriptionHandler) HandleStripeWebhook(c *gin.Context) {
+	if h.paymentProvider != paymentprovider.Stripe {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "stripe webhook disabled for current PAYMENT_PROVIDER"})
+		return
+	}
+	h.handlePaymentWebhook(c, "Stripe-Signature")
+}
+
+func (h *SubscriptionHandler) HandleAbacatePayWebhook(c *gin.Context) {
+	if h.paymentProvider != paymentprovider.AbacatePay {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "abacatepay webhook disabled for current PAYMENT_PROVIDER"})
+		return
+	}
+	h.handlePaymentWebhook(c, "X-Abacate-Webhook-Secret")
+}
+
+func (h *SubscriptionHandler) handlePaymentWebhook(c *gin.Context, signatureHeader string) {
 	payload, err := io.ReadAll(c.Request.Body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
 		return
 	}
 
-	signature := c.GetHeader("Stripe-Signature")
+	signature := c.GetHeader(signatureHeader)
 	events, err := h.gateway.ValidateWebhook(payload, signature)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid webhook signature"})
@@ -327,11 +390,7 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		}
 		// Resolve Plan Slug from PriceID
 		var planSlug string
-		if event.PriceID != "" {
-			if p, err := h.planRepo.FindByStripePriceID(event.PriceID); err == nil && p != nil {
-				planSlug = p.Slug
-			}
-		}
+		planSlug = h.resolvePlanSlug(event.PriceID)
 
 		if planSlug != "" {
 			sub.Plan = planSlug
@@ -356,7 +415,7 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 				h.db.Model(&user.User{}).
 					Where("id = ?", event.UserID).
 					Update("plan", planSlug)
-			} else if event.CustomerID != "" {
+			} else if event.CustomerID != "" && h.paymentProvider == paymentprovider.Stripe {
 				h.db.Model(&user.User{}).
 					Where("stripe_customer_id = ?", event.CustomerID).
 					Update("plan", planSlug)
@@ -370,11 +429,7 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		}
 		sub.ExternalID = event.SubscriptionID
 		var planSlug string
-		if event.PriceID != "" {
-			if p, err := h.planRepo.FindByStripePriceID(event.PriceID); err == nil && p != nil {
-				planSlug = p.Slug
-			}
-		}
+		planSlug = h.resolvePlanSlug(event.PriceID)
 		if planSlug != "" {
 			sub.Plan = planSlug
 		}
@@ -383,7 +438,7 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 		if err := h.subscriptionRepo.Upsert(sub); err != nil {
 			return err
 		}
-		if planSlug != "" && event.CustomerID != "" {
+		if planSlug != "" && event.CustomerID != "" && h.paymentProvider == paymentprovider.Stripe {
 			h.db.Model(&user.User{}).
 				Where("stripe_customer_id = ?", event.CustomerID).
 				Update("plan", planSlug)
@@ -395,11 +450,29 @@ func (h *SubscriptionHandler) processWebhookEvent(event *payment.WebhookEvent) e
 			sub.Status = subscription.StatusCanceled
 			_ = h.subscriptionRepo.Upsert(sub)
 		}
-		h.db.Model(&user.User{}).
-			Where("stripe_customer_id = ?", event.CustomerID).
-			Update("plan", "free")
+		if h.paymentProvider == paymentprovider.Stripe {
+			h.db.Model(&user.User{}).
+				Where("stripe_customer_id = ?", event.CustomerID).
+				Update("plan", "free")
+		} else if event.UserID != "" {
+			h.db.Model(&user.User{}).
+				Where("id = ?", event.UserID).
+				Update("plan", "free")
+		}
 	}
 
 	return nil
 }
 
+func (h *SubscriptionHandler) resolvePlanSlug(priceOrSlug string) string {
+	if priceOrSlug == "" {
+		return ""
+	}
+	if priceOrSlug == "pro" || priceOrSlug == "premium" || priceOrSlug == "free" {
+		return priceOrSlug
+	}
+	if p, err := h.planRepo.FindByStripePriceID(priceOrSlug); err == nil && p != nil {
+		return p.Slug
+	}
+	return ""
+}

@@ -73,4 +73,3 @@ func hasAllowedMagicBytes(b []byte) bool {
 	}
 	return false
 }
-

@@ -10,6 +10,7 @@ import (
 	"finance-ia/internal/domain/email"
 	"finance-ia/internal/domain/finance"
 	goalDomain "finance-ia/internal/domain/goal"
+	"finance-ia/internal/domain/payment"
 	subDomain "finance-ia/internal/domain/subscription"
 	"finance-ia/internal/domain/user"
 	infraAI "finance-ia/internal/infrastructure/ai"
@@ -20,6 +21,8 @@ import (
 	infraGoalRepo "finance-ia/internal/infrastructure/database/goal"
 	infraSubRepo "finance-ia/internal/infrastructure/database/subscription"
 	infrauser "finance-ia/internal/infrastructure/database/user"
+	abacateAdapter "finance-ia/internal/infrastructure/payment/abacatepay"
+	"finance-ia/internal/infrastructure/payment/provider"
 	stripeAdapter "finance-ia/internal/infrastructure/payment/stripe"
 	aiHandlers "finance-ia/internal/interfaces/handlers/ai"
 	authHandlers "finance-ia/internal/interfaces/handlers/auth"
@@ -130,8 +133,33 @@ func main() {
 		log.Printf("Warning: failed to seed plans: %v", err)
 	}
 
-	gateway := stripeAdapter.NewAdapter()
-	subscriptionHandler := subHandlers.NewSubscriptionHandler(gateway, subRepo, planRepo, userRepo, db)
+	paymentProvider := provider.Normalize(getEnv("PAYMENT_PROVIDER"))
+	var gateway payment.PaymentGateway
+	switch paymentProvider {
+	case provider.AbacatePay:
+		gateway = abacateAdapter.NewAdapter()
+	default:
+		gateway = stripeAdapter.NewAdapter()
+	}
+
+	// Auto-sync Stripe Product/Price IDs for paid plans when STRIPE_SECRET_KEY is configured.
+	// This removes manual dependency on STRIPE_PRICE_* variables in local/prod bootstrap.
+	if paymentProvider == provider.Stripe && getEnv("STRIPE_SECRET_KEY") != "" {
+		if stripeGateway, ok := gateway.(stripeCatalogGateway); ok {
+			if err := syncStripeCatalog(planRepo, stripeGateway); err != nil {
+				log.Printf("Warning: failed to sync stripe catalog IDs: %v", err)
+			}
+		}
+	}
+	if paymentProvider == provider.AbacatePay && getEnv("ABACATEPAY_API_KEY") != "" {
+		if abacateGateway, ok := gateway.(abacateCatalogGateway); ok {
+			if err := syncAbacateCatalog(planRepo, abacateGateway); err != nil {
+				log.Printf("Warning: failed to sync abacatepay catalog IDs: %v", err)
+			}
+		}
+	}
+
+	subscriptionHandler := subHandlers.NewSubscriptionHandler(gateway, paymentProvider, subRepo, planRepo, userRepo, db)
 	planHandler := subHandlers.NewPlanHandler(gateway, planRepo)
 
 	// ────────────────────────────────────
