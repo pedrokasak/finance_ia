@@ -7,13 +7,18 @@ import {
   SignupRequest,
 } from "../types/auth";
 
-const baseUrl = import.meta.env.VITE_API_BASE_URL;
+const rawBaseUrl = (
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:8080/api/v1"
+).replace(/\/+$/, "");
 
 export const fetchApi = async <T = unknown>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> => {
-  const response = await fetch(`${baseUrl}${endpoint}`, options);
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const response = await fetch(`${rawBaseUrl}${cleanEndpoint}`, options);
   let data: T;
   try {
     data = await response.json();
@@ -40,7 +45,7 @@ const authentication = {
     return response as unknown;
   },
   signup: async (data: SignupRequest) => {
-    return await fetchApi<unknown>(`auth/signup/`, {
+    return await fetchApi<unknown>(`auth/signup`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -49,7 +54,7 @@ const authentication = {
     });
   },
   logout: async (): Promise<LogoutResponse> => {
-    return await fetchApi<LogoutResponse>(`auth/logout/`, {
+    return await fetchApi<LogoutResponse>(`auth/logout`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,7 +64,7 @@ const authentication = {
   forgotPassword: async (
     data: ForgotPasswordRequest,
   ): Promise<ForgotPasswordResponse> => {
-    return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password/`, {
+    return await fetchApi<ForgotPasswordResponse>(`auth/forgot-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -70,7 +75,7 @@ const authentication = {
   resetPassword: async (
     data: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> => {
-    return await fetchApi<ResetPasswordResponse>(`auth/reset-password/`, {
+    return await fetchApi<ResetPasswordResponse>(`auth/reset-password`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

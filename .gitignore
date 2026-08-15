@@ -3,13 +3,16 @@ server/.DS_Store
 server/node_modules
 server/dist
 server/.env
-# server/.env.local
+server/.env.*
+server/!.env.example
+server/.env.example
 server/.env.development.local
 
 web/node_modules
 web/.DS_Store
 web/dist
 web/.env
-web/.env.local
+web/.env.*
+web/!.env.example
 web/.env.development.local
 .env
