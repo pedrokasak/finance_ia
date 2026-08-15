@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // FinancialMethodSplit represents the percentage allocation for a category
@@ -16,7 +17,7 @@ type FinancialMethodSplit struct {
 
 // FinancialMethod represents a budgeting strategy
 type FinancialMethod struct {
-	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
 	Key         string    `json:"key" gorm:"unique;not null"` // e.g., "50-30-20"
 	Name        string    `json:"name" gorm:"not null"`
 	Tagline     string    `json:"tagline" gorm:"not null"`
@@ -29,6 +30,13 @@ type FinancialMethod struct {
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+}
+
+func (m *FinancialMethod) BeforeCreate(tx *gorm.DB) error {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
+	}
+	return nil
 }
 
 // Split returns the parsed JSON array of splits

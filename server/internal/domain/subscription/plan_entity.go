@@ -2,12 +2,13 @@ package subscription
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // Plan represents a subscription plan available for purchase.
 // Plans are seeded into the database and linked to Stripe Price IDs.
 type Plan struct {
-	ID                   uuid.UUID     `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID                   uuid.UUID     `json:"id" gorm:"type:uuid;primaryKey"`
 	Slug                 string        `json:"slug" gorm:"unique;not null"` // "free", "pro", "premium"
 	Name                 string        `json:"name" gorm:"not null"`        // Display name
 	Description          string        `json:"description"`
@@ -23,11 +24,25 @@ type Plan struct {
 	IsActive             bool          `json:"is_active" gorm:"default:true"`
 }
 
+func (p *Plan) BeforeCreate(tx *gorm.DB) error {
+	if p.ID == uuid.Nil {
+		p.ID = uuid.New()
+	}
+	return nil
+}
+
 // PlanFeature represents a specific feature of a subscription plan.
 type PlanFeature struct {
-	ID          uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID          uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
 	PlanID      uuid.UUID `json:"plan_id" gorm:"type:uuid;index"`
 	Description string    `json:"description" gorm:"not null"`
+}
+
+func (pf *PlanFeature) BeforeCreate(tx *gorm.DB) error {
+	if pf.ID == uuid.Nil {
+		pf.ID = uuid.New()
+	}
+	return nil
 }
 
 // PlanRepository defines the data access contract for plans

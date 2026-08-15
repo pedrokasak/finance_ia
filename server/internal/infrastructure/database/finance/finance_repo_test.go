@@ -86,7 +86,8 @@ func TestPostgresTransactionRepository(t *testing.T) {
 			UserID:         userID,
 			IdempotencyKey: "test-key-123",
 		}
-		repo.Create(tx2)
+		err := repo.Create(tx2)
+		assert.NoError(t, err)
 
 		found, err := repo.FindByIdempotencyKey("test-key-123")
 		assert.NoError(t, err)

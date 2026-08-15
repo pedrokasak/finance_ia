@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // TransactionType represents whether a transaction is income or expense
@@ -16,7 +17,7 @@ const (
 
 // Transaction represents a financial transaction
 type Transaction struct {
-	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID             uuid.UUID       `json:"id" gorm:"type:uuid;primaryKey"`
 	UserID         uuid.UUID       `json:"user_id" gorm:"type:uuid;not null;index"`
 	CategoryID     *uuid.UUID      `json:"category_id" gorm:"type:uuid"`
 	Type           TransactionType `json:"type" gorm:"not null"`
@@ -32,6 +33,13 @@ type Transaction struct {
 	Category *Category `json:"category,omitempty" gorm:"foreignKey:CategoryID"`
 }
 
+func (t *Transaction) BeforeCreate(tx *gorm.DB) error {
+	if t.ID == uuid.Nil {
+		t.ID = uuid.New()
+	}
+	return nil
+}
+
 // CategoryType groups categories as income or expense
 type CategoryType string
 
@@ -42,7 +50,7 @@ const (
 
 // Category represents an expense or income category
 type Category struct {
-	ID        uuid.UUID    `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID        uuid.UUID    `json:"id" gorm:"type:uuid;primaryKey"`
 	UserID    *uuid.UUID   `json:"user_id" gorm:"type:uuid"` // nil = default category
 	Name      string       `json:"name" gorm:"not null"`
 	Type      CategoryType `json:"type" gorm:"not null"`
@@ -53,9 +61,16 @@ type Category struct {
 	UpdatedAt time.Time    `json:"updated_at"`
 }
 
+func (c *Category) BeforeCreate(tx *gorm.DB) error {
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	return nil
+}
+
 // Budget stores the user's monthly budget allocation by financial method
 type Budget struct {
-	ID             uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID             uuid.UUID `json:"id" gorm:"type:uuid;primaryKey"`
 	UserID         uuid.UUID `json:"user_id" gorm:"type:uuid;not null;uniqueIndex:idx_budget_user_period"`
 	Period         string    `json:"period" gorm:"not null;uniqueIndex:idx_budget_user_period"` // "2024-01"
 	TotalIncome    float64   `json:"total_income" gorm:"not null"`
@@ -67,6 +82,13 @@ type Budget struct {
 	SavingsAmount  float64   `json:"savings_amount"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+func (b *Budget) BeforeCreate(tx *gorm.DB) error {
+	if b.ID == uuid.Nil {
+		b.ID = uuid.New()
+	}
+	return nil
 }
 
 // DashboardSummary aggregates financial data for the dashboard

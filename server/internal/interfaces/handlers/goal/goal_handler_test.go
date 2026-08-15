@@ -153,7 +153,8 @@ func TestGoalHandler_GetGoals(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		var res []goal.Goal
-		json.Unmarshal(w.Body.Bytes(), &res)
+		err := json.Unmarshal(w.Body.Bytes(), &res)
+		assert.NoError(t, err)
 		assert.Len(t, res, 1)
 		mockRepo.AssertExpectations(t)
 	})
