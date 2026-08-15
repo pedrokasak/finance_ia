@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // SubscriptionStatus tracks the Stripe subscription lifecycle
@@ -18,7 +19,7 @@ const (
 
 // Subscription tracks the user's payment subscription
 type Subscription struct {
-	ID                 uuid.UUID          `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID                 uuid.UUID          `json:"id" gorm:"type:uuid;primaryKey"`
 	UserID             uuid.UUID          `json:"user_id" gorm:"type:uuid;not null;uniqueIndex"`
 	Plan               string             `json:"plan" gorm:"not null;default:'free'"`
 	Status             SubscriptionStatus `json:"status" gorm:"not null;default:'active'"`
@@ -30,6 +31,13 @@ type Subscription struct {
 	CanceledAt         *time.Time         `json:"canceled_at,omitempty"`
 	CreatedAt          time.Time          `json:"created_at"`
 	UpdatedAt          time.Time          `json:"updated_at"`
+}
+
+func (s *Subscription) BeforeCreate(tx *gorm.DB) error {
+	if s.ID == uuid.Nil {
+		s.ID = uuid.New()
+	}
+	return nil
 }
 
 // CheckoutSession holds the result of creating a Stripe checkout session

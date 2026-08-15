@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"finance-ia/internal/domain/ai"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
@@ -124,7 +124,7 @@ func (p *GroqProvider) generate(prompt string) (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := ioutil.ReadAll(resp.Body)
+		respBody, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("groq api error (status %d): %s", resp.StatusCode, string(respBody))
 	}
 

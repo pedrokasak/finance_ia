@@ -61,8 +61,33 @@ func TestCORS(t *testing.T) {
 			r.ServeHTTP(w, req)
 
 			assert.Equal(t, tt.expectedOrigin, w.Header().Get("Access-Control-Allow-Origin"))
+			if tt.expectedOrigin != "" {
+				assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
+				assert.Contains(t, w.Header().Get("Access-Control-Allow-Methods"), "PATCH")
+			}
 		})
 	}
+}
+
+func TestCORS_Wildcard(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	os.Setenv("ALLOWED_ORIGINS", "*")
+	defer os.Unsetenv("ALLOWED_ORIGINS")
+
+	r := gin.New()
+	r.Use(CORS())
+	r.GET("/test", func(c *gin.Context) {
+		c.Status(http.StatusOK)
+	})
+
+	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("Origin", "https://any-domain.com")
+	w := httptest.NewRecorder()
+
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, "https://any-domain.com", w.Header().Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "true", w.Header().Get("Access-Control-Allow-Credentials"))
 }
 
 func TestCORS_Options(t *testing.T) {
@@ -81,6 +106,7 @@ func TestCORS_Options(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.Equal(t, "http://localhost:5173", w.Header().Get("Access-Control-Allow-Origin"))
 	})
 
 	t.Run("Deny options", func(t *testing.T) {
@@ -96,3 +122,4 @@ func TestCORS_Options(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.Code)
 	})
 }
+

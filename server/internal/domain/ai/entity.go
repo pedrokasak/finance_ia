@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 // InsightType categorizes the AI insight
@@ -18,7 +19,7 @@ const (
 
 // AIInsight represents a generated AI financial insight for a user
 type AIInsight struct {
-	ID          uuid.UUID   `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
+	ID          uuid.UUID   `json:"id" gorm:"type:uuid;primaryKey"`
 	UserID      uuid.UUID   `json:"user_id" gorm:"type:uuid;not null;index"`
 	Type        InsightType `json:"type" gorm:"not null"`
 	Title       string      `json:"title" gorm:"not null"`
@@ -27,6 +28,13 @@ type AIInsight struct {
 	GeneratedAt time.Time   `json:"generated_at"`
 	ExpiresAt   time.Time   `json:"expires_at"`
 	Period      string      `json:"period" gorm:"not null"` // "2024-01"
+}
+
+func (a *AIInsight) BeforeCreate(tx *gorm.DB) error {
+	if a.ID == uuid.Nil {
+		a.ID = uuid.New()
+	}
+	return nil
 }
 
 // FinancialContext is passed to the AI provider for analysis
